@@ -10,7 +10,25 @@ namespace NetInspectLib.Discovery
         private ConcurrentBag<string> activeIPs;
         public List<string> results;
 
-        public ICMPScan(bool _verbose = false)
+        /// <summary>
+        /// Class for ICMP Scanning of a network
+        /// <example>
+        /// Usage
+        /// <code>
+        ///     ICMPScan scanner = new ICMPScan();
+        ///     Task<int> scan = scanner.DoICMPScan("192.168.1.1/24");
+        ///     int success = await scan;
+        ///     if(success)
+        ///     {
+        ///         foreach(host in scanner.results)
+        ///         {
+        ///             //Do Something
+        ///         }
+        ///     }
+        /// </code>
+        /// </example>
+        /// </summary>
+        public ICMPScan()
         {
             activeIPs = new ConcurrentBag<string>();
             results = new List<string>();
@@ -67,7 +85,6 @@ namespace NetInspectLib.Discovery
                 var activeIPs = AddSuccessfulPingResults(pingResults);
 
                 var results = SortAndConvertActiveIPs(activeIPs);
-                PrintResults(results);
 
                 return 0;
             }
@@ -101,7 +118,7 @@ namespace NetInspectLib.Discovery
             foreach (var pingReply in pingResults.Where(r => r.Status == IPStatus.Success))
             {
                 activeIPs.Add(pingReply.Address.ToString());
-                if (verbose) Console.Write($"\r[*] Found {activeIPs.Count} Hosts");
+                Debug.Write($"\r[*] Found {activeIPs.Count} Hosts");
             }
 
             return activeIPs;
@@ -114,15 +131,6 @@ namespace NetInspectLib.Discovery
                 .OrderBy(arg => arg)
                 .Select(arg => arg.ToString())
                 .ToList();
-        }
-
-        private void PrintResults(List<string> results)
-        {
-            if (verbose) Console.WriteLine("\r\n==============================");
-            foreach (var host in results)
-            {
-                if (verbose) Console.WriteLine($"[+] {host}");
-            }
         }
     }
 }
