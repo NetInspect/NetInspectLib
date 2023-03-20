@@ -16,8 +16,8 @@ namespace NetInspectLib.Discovery
         /// Usage
         /// <code>
         ///     ICMPScan scanner = new ICMPScan();
-        ///     Task<int> scan = scanner.DoICMPScan("192.168.1.1/24");
-        ///     int success = await scan;
+        ///     Task<bool> scan = scanner.DoICMPScan("192.168.1.1/24");
+        ///     bool success = await scan;
         ///     if(success)
         ///     {
         ///         foreach(host in scanner.results)
@@ -63,7 +63,7 @@ namespace NetInspectLib.Discovery
             }
         }
 
-        public async Task<int> DoICMPScan(string networkMask)
+        public async Task<bool> DoICMPScan(string networkMask)
         {
             try
             {
@@ -86,12 +86,12 @@ namespace NetInspectLib.Discovery
 
                 var results = SortAndConvertActiveIPs(activeIPs);
 
-                return 0;
+                return true;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[-] DoPingSweep Error: {ex.Message}");
-                return 1;
+                return false;
             }
         }
 
