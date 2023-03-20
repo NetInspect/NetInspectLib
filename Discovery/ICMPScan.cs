@@ -1,21 +1,19 @@
 ﻿using System.Collections.Concurrent;
 using System.Net.NetworkInformation;
 using System.Net;
+using System.Diagnostics;
 
-namespace NetInspectLib
+namespace NetInspectLib.Discovery
 {
     public class ICMPScan
     {
-        private bool verbose;
         private ConcurrentBag<string> activeIPs;
-
         public List<string> results;
 
         public ICMPScan(bool _verbose = false)
         {
             activeIPs = new ConcurrentBag<string>();
             results = new List<string>();
-            this.verbose = _verbose;
         }
 
         private (IPAddress ipAddress, int subnetMask) ValidateNetworkMask(string networkMask)
@@ -42,10 +40,7 @@ namespace NetInspectLib
             }
             catch (Exception ex)
             {
-                if (verbose)
-                {
-                    Console.WriteLine($"[-] ValidateNetworkMask Error: {ex.Message}");
-                }
+                Debug.WriteLine($"[-] ValidateNetworkMask Error: {ex.Message}");
                 throw;
             }
         }
@@ -62,7 +57,7 @@ namespace NetInspectLib
                     numberOfHosts = 1;
                 }
 
-                byte[] subnetMaskBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(-1 << (32 - subnetMask)));
+                byte[] subnetMaskBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(-1 << 32 - subnetMask));
 
                 var pingTasks = Enumerable.Range(0, numberOfHosts)
                     .Select(i => PingHostAsync(ipAddress, subnetMaskBytes, i));
@@ -78,7 +73,7 @@ namespace NetInspectLib
             }
             catch (Exception ex)
             {
-                if (verbose) Console.WriteLine($"[-] DoPingSweep Error: {ex.Message}");
+                Debug.WriteLine($"[-] DoPingSweep Error: {ex.Message}");
                 return 1;
             }
         }
