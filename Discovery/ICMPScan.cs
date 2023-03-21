@@ -1,21 +1,37 @@
 ﻿using System.Collections.Concurrent;
 using System.Net.NetworkInformation;
 using System.Net;
+using System.Diagnostics;
 
-namespace NetInspectLib
+namespace NetInspectLib.Discovery
 {
+    /// <summary>
+    /// Class for ICMP Scanning of a network
+    /// <example>
+    /// Usage
+    /// <code>
+    ///     ICMPScan scanner = new ICMPScan();
+    ///     Task<bool> scan = scanner.DoICMPScan("192.168.1.1/24");
+    ///     bool success = await scan;
+    ///     if(success)
+    ///     {
+    ///         foreach(host in scanner.results)
+    ///         {
+    ///             //Do Something
+    ///         }
+    ///     }
+    /// </code>
+    /// </example>
+    /// </summary>
     public class ICMPScan
     {
-        private bool verbose;
         private ConcurrentBag<string> activeIPs;
-
         public List<string> results;
 
-        public ICMPScan(bool _verbose = false)
+        public ICMPScan()
         {
             activeIPs = new ConcurrentBag<string>();
             results = new List<string>();
-            this.verbose = _verbose;
         }
 
         private (IPAddress ipAddress, int subnetMask) ValidateNetworkMask(string networkMask)
@@ -42,15 +58,12 @@ namespace NetInspectLib
             }
             catch (Exception ex)
             {
-                if (verbose)
-                {
-                    Console.WriteLine($"[-] ValidateNetworkMask Error: {ex.Message}");
-                }
+                Debug.WriteLine($"[-] ValidateNetworkMask Error: {ex.Message}");
                 throw;
             }
         }
 
-        public async Task<int> DoICMPScan(string networkMask)
+        public async Task<bool> DoICMPScan(string networkMask)
         {
             try
             {
@@ -62,7 +75,7 @@ namespace NetInspectLib
                     numberOfHosts = 1;
                 }
 
-                byte[] subnetMaskBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(-1 << (32 - subnetMask)));
+                byte[] subnetMaskBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(-1 << 32 - subnetMask));
 
                 var pingTasks = Enumerable.Range(0, numberOfHosts)
                     .Select(i => PingHostAsync(ipAddress, subnetMaskBytes, i));
@@ -72,14 +85,13 @@ namespace NetInspectLib
                 var activeIPs = AddSuccessfulPingResults(pingResults);
 
                 var results = SortAndConvertActiveIPs(activeIPs);
-                PrintResults(results);
 
-                return 0;
+                return true;
             }
             catch (Exception ex)
             {
-                if (verbose) Console.WriteLine($"[-] DoPingSweep Error: {ex.Message}");
-                return 1;
+                Debug.WriteLine($"[-] DoPingSweep Error: {ex.Message}");
+                return false;
             }
         }
 
@@ -106,7 +118,7 @@ namespace NetInspectLib
             foreach (var pingReply in pingResults.Where(r => r.Status == IPStatus.Success))
             {
                 activeIPs.Add(pingReply.Address.ToString());
-                if (verbose) Console.Write($"\r[*] Found {activeIPs.Count} Hosts");
+                Debug.Write($"\r[*] Found {activeIPs.Count} Hosts");
             }
 
             return activeIPs;
@@ -119,15 +131,6 @@ namespace NetInspectLib
                 .OrderBy(arg => arg)
                 .Select(arg => arg.ToString())
                 .ToList();
-        }
-
-        private void PrintResults(List<string> results)
-        {
-            if (verbose) Console.WriteLine("\r\n==============================");
-            foreach (var host in results)
-            {
-                if (verbose) Console.WriteLine($"[+] {host}");
-            }
         }
     }
 }
