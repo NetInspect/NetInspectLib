@@ -5,29 +5,29 @@ using System.Diagnostics;
 
 namespace NetInspectLib.Discovery
 {
+    /// <summary>
+    /// Class for ICMP Scanning of a network
+    /// <example>
+    /// Usage
+    /// <code>
+    ///     ICMPScan scanner = new ICMPScan();
+    ///     Task<bool> scan = scanner.DoICMPScan("192.168.1.1/24");
+    ///     bool success = await scan;
+    ///     if(success)
+    ///     {
+    ///         foreach(host in scanner.results)
+    ///         {
+    ///             //Do Something
+    ///         }
+    ///     }
+    /// </code>
+    /// </example>
+    /// </summary>
     public class ICMPScan
     {
         private ConcurrentBag<string> activeIPs;
         public List<string> results;
 
-        /// <summary>
-        /// Class for ICMP Scanning of a network
-        /// <example>
-        /// Usage
-        /// <code>
-        ///     ICMPScan scanner = new ICMPScan();
-        ///     Task<bool> scan = scanner.DoICMPScan("192.168.1.1/24");
-        ///     bool success = await scan;
-        ///     if(success)
-        ///     {
-        ///         foreach(host in scanner.results)
-        ///         {
-        ///             //Do Something
-        ///         }
-        ///     }
-        /// </code>
-        /// </example>
-        /// </summary>
         public ICMPScan()
         {
             activeIPs = new ConcurrentBag<string>();
