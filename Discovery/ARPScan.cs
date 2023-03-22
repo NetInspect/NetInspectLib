@@ -6,6 +6,8 @@ using NetInspectLib.Networking;
 using System.Diagnostics;
 using System.Collections.Concurrent;
 using System.Threading;
+using NetInspectLib.Types;
+using System.Xml.Schema;
 
 namespace NetInspectLib.Discovery
 {
@@ -16,11 +18,11 @@ namespace NetInspectLib.Discovery
 
         private static uint macAddrLen = (uint)new byte[6].Length;
 
-        public Dictionary<string, string> results;
+        public List<Host> results;
 
         public ARPScan()
         {
-            results = new Dictionary<string, string>(); //ip, mac
+            results = new List<Host>();
         }
 
         private string[]? SendArpRequestAsync(IPAddress network, int cidr, int hostNum)
@@ -66,11 +68,12 @@ namespace NetInspectLib.Discovery
 
                 foreach (Thread thread in threads) { thread.Join(); }
 
-                foreach (var result in scanResults)
+                foreach (var result in scanResults.OrderBy(x => x, new IPv4Comparer()).ToList())
                 {
-                    if (!results.ContainsKey(result[0]))
+                    if (!results.Any(ip => ip.GetIPAddress().ToString() == result[0]))
                     {
-                        results.Add(result[0], result[1]);
+                        Host host = new Host(result[0], result[1]);
+                        results.Add(host);
                     }
                 }
 
@@ -81,6 +84,26 @@ namespace NetInspectLib.Discovery
                 Debug.WriteLine($"ARP Scan Error: {ex.Message}");
                 return Task.FromResult(false);
             }
+        }
+    }
+
+    internal class IPv4Comparer : IComparer<string[]>
+    {
+        public int Compare(string[]? x, string[]? y)
+        {
+            if (x == null || y == null) return 0;
+            var xInt = IPAddressToUInt32(x[0]);
+            var yInt = IPAddressToUInt32(y[0]);
+            return xInt.CompareTo(yInt);
+        }
+
+        private static uint IPAddressToUInt32(string ipAddress)
+        {
+            var bytes = ipAddress.Split('.')
+                .Select(byte.Parse)
+                .Reverse()
+                .ToArray();
+            return BitConverter.ToUInt32(bytes, 0);
         }
     }
 }
