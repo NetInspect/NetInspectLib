@@ -4,97 +4,106 @@ using System.Runtime.InteropServices;
 
 using NetInspectLib.Networking;
 using System.Diagnostics;
+using System.Collections.Concurrent;
+using System.Threading;
+using NetInspectLib.Types;
+using System.Xml.Schema;
 
 namespace NetInspectLib.Discovery
 {
     public class ARPScan
     {
-        public Dictionary<string, List<string>> results;
+        [DllImport("iphlpapi.dll", ExactSpelling = true)]
+        private static extern int SendARP(int DestIP, int SrcIP, byte[] pMacAddr, ref uint PhyAddrLen);
+
+        private static uint macAddrLen = (uint)new byte[6].Length;
+
+        public List<Host> results;
 
         public ARPScan()
         {
-            results = new Dictionary<string, List<string>>();
+            results = new List<Host>();
         }
 
-        public async Task<bool> DoARPScan(string networkMask)
+        private string[]? SendArpRequestAsync(IPAddress network, int cidr, int hostNum)
+        {
+            var ip = IPHelper.GetAddress(network, cidr, hostNum);
+            byte[] macAddr = new byte[6];
+            try
+            {
+                SendARP((int)BitConverter.ToInt32(ip.GetAddressBytes(), 0), 0, macAddr, ref macAddrLen);
+                var macString = BitConverter.ToString(macAddr).ToUpper();
+                if (macString != "00-00-00-00-00-00")
+                {
+                    return new string[] { ip.ToString(), macString };
+                }
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        public Task<bool> DoARPScan(string networkMask)
         {
             try
             {
-                var networkAddress = IPAddress.Parse(networkMask.Split('/')[0]);
                 var cidr = int.Parse(networkMask.Split('/')[1]);
-                var subnetMask = IPHelper.GetMask(cidr);
-                var network = IPHelper.GetNetworkAddress(networkAddress, subnetMask);
+                var network = IPHelper.GetNetworkAddress(IPAddress.Parse(networkMask.Split('/')[0]), IPHelper.GetMask(cidr));
 
-                Debug.WriteLine($"\r\nNetwork Address: {networkAddress}\nCIDR: {cidr}\nsubnetMask: {subnetMask}\nnetwork: {network}");
+                ConcurrentBag<string[]> scanResults = new ConcurrentBag<string[]>();
+                List<Thread> threads = new List<Thread>();
 
-                byte[] macAddr = new byte[6];
-                uint adapterInfoLength = (uint)Marshal.SizeOf<IPHelper.IP_ADAPTER_INFO>();
-                IntPtr pAdapterInfo = Marshal.AllocHGlobal((int)adapterInfoLength);
-
-                // Get the local system MAC address
-                if (IPHelper.GetAdaptersInfo(pAdapterInfo, ref adapterInfoLength) == IPHelper.ERROR_BUFFER_OVERFLOW)
+                for (int i = 1; i < (1 << (32 - cidr)) - 2; i++)
                 {
-                    Marshal.FreeHGlobal(pAdapterInfo);
-                    pAdapterInfo = Marshal.AllocHGlobal((int)adapterInfoLength);
-                }
-
-                if (IPHelper.GetAdaptersInfo(pAdapterInfo, ref adapterInfoLength) == IPHelper.NO_ERROR)
-                {
-                    var adapterInfo = (IPHelper.IP_ADAPTER_INFO)Marshal.PtrToStructure(pAdapterInfo, typeof(IPHelper.IP_ADAPTER_INFO));
-                    macAddr = adapterInfo.Address.Take(6).ToArray();
-                }
-
-                Marshal.FreeHGlobal(pAdapterInfo);
-
-                using (var client = new UdpClient())
-                {
-                    client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                    client.ExclusiveAddressUse = false;
-                    client.Client.Bind(new IPEndPoint(IPAddress.Any/*network*/, 0));
-
-                    for (int i = 1; i <= (1 << (32 - cidr)) - 2; i++)
+                    Thread thread = new Thread(() =>
                     {
-                        var ip = IPHelper.GetAddress(network, cidr, i);
-                        Debug.WriteLine($"Sending ARP Request for {ip}");
-                        byte[] request = new byte[28];
-                        byte[] response = new byte[28];
+                        string[]? result = SendArpRequestAsync(network, cidr, i);
+                        if (result != null) scanResults.Add(result);
+                    });
+                    threads.Add(thread);
+                    thread.Start();
+                }
 
-                        Buffer.BlockCopy(macAddr, 0, request, 0, 6);
-                        Buffer.BlockCopy(macAddr, 0, request, 6, 6);
-                        request[12] = 8;
-                        request[13] = 6;
-                        request[14] = 0;
-                        request[15] = 1;
-                        Buffer.BlockCopy(macAddr, 0, request, 16, 6);
-                        Buffer.BlockCopy(ip.GetAddressBytes(), 0, request, 22, 4);
+                foreach (Thread thread in threads) { thread.Join(); }
 
-                        client.Send(request, request.Length, new IPEndPoint(ip, 0));
-
-                        var task = Task.Run(() => client.ReceiveAsync());
-
-                        if (await Task.WhenAny(task, Task.Delay(1000)) == task)
-                        {
-                            var result = task.Result;
-                            if (result.Buffer.Length == 28 && result.Buffer.Skip(20).Take(4).SequenceEqual(ip.GetAddressBytes()))
-                            {
-                                var mac = string.Join(":", result.Buffer.Skip(6).Take(6).Select(b => b.ToString("X2")));
-                                var adapterInfo = result.Buffer.Skip(22).Take(2).ToArray();
-                                if (!results.ContainsKey(ip.ToString()))
-                                {
-                                    results.Add(ip.ToString(), new List<string> { mac, BitConverter.ToString(adapterInfo) });
-                                }
-                            }
-                        }
+                foreach (var result in scanResults.OrderBy(x => x, new IPv4Comparer()).ToList())
+                {
+                    if (!results.Any(ip => ip.GetIPAddress().ToString() == result[0]))
+                    {
+                        Host host = new Host(result[0], result[1]);
+                        results.Add(host);
                     }
                 }
 
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"ARP Scan Error: {ex.Message}");
-                return false;
+                return Task.FromResult(false);
             }
+        }
+    }
+
+    internal class IPv4Comparer : IComparer<string[]>
+    {
+        public int Compare(string[]? x, string[]? y)
+        {
+            if (x == null || y == null) return 0;
+            var xInt = IPAddressToUInt32(x[0]);
+            var yInt = IPAddressToUInt32(y[0]);
+            return xInt.CompareTo(yInt);
+        }
+
+        private static uint IPAddressToUInt32(string ipAddress)
+        {
+            var bytes = ipAddress.Split('.')
+                .Select(byte.Parse)
+                .Reverse()
+                .ToArray();
+            return BitConverter.ToUInt32(bytes, 0);
         }
     }
 }
