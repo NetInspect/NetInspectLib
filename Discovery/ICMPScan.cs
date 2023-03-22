@@ -84,7 +84,7 @@ namespace NetInspectLib.Discovery
 
                 var activeIPs = AddSuccessfulPingResults(pingResults);
 
-                var results = SortAndConvertActiveIPs(activeIPs);
+                results = SortAndConvertActiveIPs(activeIPs);
 
                 return true;
             }
