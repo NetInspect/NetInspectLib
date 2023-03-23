@@ -13,13 +13,15 @@ public class PortScan
     // Method that scans a range of IP addresses for open ports
     public static async Task<List<(string, int)>> ScanAsync(string input)
     {
+        ThreadPool.SetMaxThreads(500, 500);
+
         // Resolve the addresses to be scanned from the input string
         var addresses = await ResolveAddresses(input);
 
-        // Initialize a list to store the results
+        // Initialize a list to store the results - CocurrentBag for multithreading
         var results = new ConcurrentBag<(string, int)>();
 
-        // Using well-known port range
+        // Using the well-known port TCP port range
         var ports = Enumerable.Range(1, 1024);
 
         // Loop over each address and scan the ports in parallel
@@ -27,19 +29,17 @@ public class PortScan
         {
             var openPorts = new List<int>();
 
-            Parallel.ForEach(ports, port =>
+            Parallel.ForEach(ports, async port =>
             {
-                if (IsPortOpenAsync(address, port).Result)
+                if (await IsPortOpenAsync(address, port, 3000))
                 {
                     openPorts.Add(port);
                 }
+
             });
 
-            // Add the open ports to the results list
-            foreach (var openPortNumber in openPorts)
-            {
-                results.Add((address, openPortNumber));
-            }
+            // Wait for all tasks to complete before adding the open ports to the results list
+            Task.WaitAll(openPorts.Select(port => Task.Run(() => results.Add((address, port)))).ToArray());
         });
 
         // Return the list of results
@@ -47,9 +47,7 @@ public class PortScan
     }
 
 
-
-
-
+    //Method to validate IPs & Subnet Masks
     private static async Task<List<string>> ResolveAddresses(string input)
     {
         var addressList = new List<string>();
@@ -59,6 +57,7 @@ public class PortScan
         {
             addressList.Add(input);
         }
+
         // If the input is a range of IP addresses with a CIDR mask e.g 192.168.1.0/24
         else if (IPAddress.TryParse(input.Split('/')[0], out var networkAddress))
         {
@@ -108,30 +107,26 @@ public class PortScan
 
 
     // Method that checks if a port is open on a given IP address
-    private static async Task<bool> IsPortOpenAsync(string address, int port)
+    private static async Task<bool> IsPortOpenAsync(string address, int port, int timeoutMilliseconds)
     {
-        try
-        {
-            // Try to connect to the IP address and port with a 3-second timeout
-            using var client = new TcpClient();
-            var task = client.ConnectAsync(address, port);
-            var timeoutTask = Task.Delay(3000); //Timeout on the port if it takes to long
-            await Task.WhenAny(task, timeoutTask);
+        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        var connectTask = socket.ConnectAsync(address, port);
+        var timeoutTask = Task.Delay(timeoutMilliseconds);
 
-            // If the connection is successful, the port is open
-            if (task.IsCompleted && !task.IsFaulted && !task.IsCanceled)
-            {
-                return true;
-            }
-        }
-        catch (SocketException ex)
+        // Wait for either the connection to succeed or the timeout to elapse
+        var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+
+        // If the connection is successful, return true
+        if (completedTask == connectTask)
         {
-            if (ex.SocketErrorCode == SocketError.ConnectionRefused)
-                return false;
             return true;
         }
 
-        // If the connection attempt times out or fails, the port is not open
+        // Otherwise, return false
+        socket.Close();
         return false;
     }
+
+
+
 }
