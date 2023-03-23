@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -13,32 +14,43 @@ public class PortScan
     public static async Task<List<(string, int)>> ScanAsync(string input)
     {
         // Resolve the addresses to be scanned from the input string
-        var addresses = ResolveAddresses(input);
+        var addresses = await ResolveAddresses(input);
 
         // Initialize a list to store the results
-        var results = new List<(string, int)>();
+        var results = new ConcurrentBag<(string, int)>();
 
-        // Loop over each address and port combination to check if the port is open
-        foreach (var address in addresses)
+        // Using well-known port range
+        var ports = Enumerable.Range(1, 1024);
+
+        // Loop over each address and scan the ports in parallel
+        Parallel.ForEach(addresses, address =>
         {
-            // Loop over all possible port numbers (1 to 65535)
-            var tasks = Enumerable.Range(1, 65535).Select(port => IsPortOpenAsync(address, port));
-            var openPorts = await Task.WhenAll(tasks);
+            var openPorts = new List<int>();
 
-            // Filter the open ports and add them to the results list
-            var openPortNumbers = Enumerable.Range(1, 65535).Where(i => openPorts[i - 1]);
-            foreach (var openPortNumber in openPortNumbers)
+            Parallel.ForEach(ports, port =>
+            {
+                if (IsPortOpenAsync(address, port).Result)
+                {
+                    openPorts.Add(port);
+                }
+            });
+
+            // Add the open ports to the results list
+            foreach (var openPortNumber in openPorts)
             {
                 results.Add((address, openPortNumber));
             }
-        }
+        });
 
         // Return the list of results
-        return results;
+        return results.ToList();
     }
 
 
-    private static List<string> ResolveAddresses(string input)
+
+
+
+    private static async Task<List<string>> ResolveAddresses(string input)
     {
         var addressList = new List<string>();
 
@@ -64,7 +76,7 @@ public class PortScan
             while (BitConverter.ToInt32(addressBytes, 0) <= endAddress)
             {
                 var ipAddress = new IPAddress(addressBytes).ToString();
-                if (PingIPAddress(ipAddress))
+                if (await PingIPAddress(ipAddress))
                 {
                     addressList.Add(ipAddress);
                 }
@@ -80,12 +92,12 @@ public class PortScan
     }
 
     // Helper method that pings an IP address to check if it is reachable
-    private static bool PingIPAddress(string ipAddress)
+    private static async Task<bool> PingIPAddress(string ipAddress)
     {
         using var ping = new Ping();
         try
         {
-            var reply = ping.Send(ipAddress, 1000);
+            var reply = await ping.SendPingAsync(ipAddress, 1000);
             return reply.Status == IPStatus.Success;
         }
         catch (PingException)
@@ -93,6 +105,7 @@ public class PortScan
             return false;
         }
     }
+
 
     // Method that checks if a port is open on a given IP address
     private static async Task<bool> IsPortOpenAsync(string address, int port)
