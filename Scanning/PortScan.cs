@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -11,18 +10,18 @@ using System.Net.Sockets;
 public class PortScan
 {
     // Method that scans a range of IP addresses for open ports
-    public static async Task<List<(string, int)>> ScanAsync(string input)
+    public static async Task<List<(string, int)>> ScanAsync(string ipAddress, string portRange)
     {
         ThreadPool.SetMaxThreads(500, 500);
 
         // Resolve the addresses to be scanned from the input string
-        var addresses = await ResolveAddresses(input);
+        var addresses = await ResolveAddresses(ipAddress);
 
         // Initialize a list to store the results - CocurrentBag for multithreading
         var results = new ConcurrentBag<(string, int)>();
 
-        // Using the well-known port TCP port range
-        var ports = Enumerable.Range(1, 1024);
+        // Parse the port range input
+        var ports = ParsePortRange(portRange);
 
         // Loop over each address and scan the ports in parallel
         Parallel.ForEach(addresses, address =>
@@ -45,6 +44,40 @@ public class PortScan
         // Return the list of results
         return results.ToList();
     }
+
+    // Helper method that parses a string containing a range of ports
+    private static IEnumerable<int> ParsePortRange(string portRange)
+    {
+        var ports = new List<int>();
+
+        if (string.IsNullOrWhiteSpace(portRange))
+        {
+            return ports;
+        }
+
+        foreach (var item in portRange.Split(','))
+        {
+            var range = item.Trim().Split('-');
+
+            if (range.Length == 1)
+            {
+                if (int.TryParse(range[0], out var port))
+                {
+                    ports.Add(port);
+                }
+            }
+            else if (range.Length == 2)
+            {
+                if (int.TryParse(range[0], out var start) && int.TryParse(range[1], out var end))
+                {
+                    ports.AddRange(Enumerable.Range(start, end - start + 1));
+                }
+            }
+        }
+
+        return ports.Distinct();
+    }
+
 
 
     //Method to validate IPs & Subnet Masks
