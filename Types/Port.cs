@@ -25,7 +25,7 @@
             }
             else
             {
-                Name = name ?? "UNKNOWEN";
+                Name = name ?? "UNKNOWN";
             }
         }
     }
