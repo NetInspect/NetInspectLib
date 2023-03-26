@@ -25,7 +25,7 @@
             }
             else
             {
-                Name = name ?? String.Empty;
+                Name = name ?? "UNKNOWEN";
             }
         }
     }
