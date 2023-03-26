@@ -2,6 +2,7 @@
 using System.Net.NetworkInformation;
 using System.Net;
 using System.Diagnostics;
+using NetInspectLib.Types;
 
 namespace NetInspectLib.Discovery
 {
@@ -26,12 +27,12 @@ namespace NetInspectLib.Discovery
     public class ICMPScan
     {
         private ConcurrentBag<string> activeIPs;
-        public List<string> results;
+        public List<Host> results;
 
         public ICMPScan()
         {
             activeIPs = new ConcurrentBag<string>();
-            results = new List<string>();
+            results = new List<Host>();
         }
 
         private (IPAddress ipAddress, int subnetMask) ValidateNetworkMask(string networkMask)
@@ -84,7 +85,7 @@ namespace NetInspectLib.Discovery
 
                 var activeIPs = AddSuccessfulPingResults(pingResults);
 
-                var results = SortAndConvertActiveIPs(activeIPs);
+                results = SortAndConvertActiveIPs(activeIPs);
 
                 return true;
             }
@@ -118,19 +119,26 @@ namespace NetInspectLib.Discovery
             foreach (var pingReply in pingResults.Where(r => r.Status == IPStatus.Success))
             {
                 activeIPs.Add(pingReply.Address.ToString());
-                Debug.Write($"\r[*] Found {activeIPs.Count} Hosts");
             }
 
             return activeIPs;
         }
 
-        private List<string> SortAndConvertActiveIPs(ConcurrentBag<string> activeIPs)
+        private List<Host> SortAndConvertActiveIPs(ConcurrentBag<string> activeIPs)
         {
-            return activeIPs
+            List<Host> result = new List<Host>();
+
+            var temp = activeIPs
                 .Select(Version.Parse)
                 .OrderBy(arg => arg)
                 .Select(arg => arg.ToString())
                 .ToList();
+
+            foreach (var host in temp)
+            {
+                result.Add(new Host(host));
+            }
+            return result;
         }
     }
 }
