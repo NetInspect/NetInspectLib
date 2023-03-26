@@ -16,7 +16,7 @@ namespace NetInspectLib.Networking
             route = new Route();
         }
 
-        public bool DoTraceroute(string hostname, int maxHops)
+        public Task<bool> DoTraceroute(string hostname, int maxHops)
         {
             IPAddress[] addresses;
 
@@ -27,13 +27,13 @@ namespace NetInspectLib.Networking
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error getting IP address for {hostname}: {ex.Message}");
-                return false;
+                return Task.FromResult(false);
             }
 
             if (addresses.Length == 0)
             {
                 Debug.WriteLine($"No IP address found for {hostname}");
-                return false;
+                return Task.FromResult(false);
             }
 
             IPAddress ip = addresses[0];
@@ -71,7 +71,7 @@ namespace NetInspectLib.Networking
                 }
             }
 
-            return true;
+            return Task.FromResult(true);
         }
 
         IEnumerator IEnumerable.GetEnumerator()
