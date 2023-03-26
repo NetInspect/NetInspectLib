@@ -41,7 +41,7 @@ namespace NetInspectLib.Scanning
         {
             List<Thread> threads = new List<Thread>();
             ConcurrentBag<Port> openPorts = new ConcurrentBag<Port>();
-            for (int portNum = 1; portNum <= 1000; portNum++)
+            for (int portNum = 1; portNum <= 1024; portNum++)
             {
                 Thread thread = new Thread(() =>
                 {
