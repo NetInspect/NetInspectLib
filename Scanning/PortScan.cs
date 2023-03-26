@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-
 using NetInspectLib.Types;
 
 namespace NetInspectLib.Scanning
