@@ -13,7 +13,7 @@
             { 80, "HTTP" },     { 110, "POP" },
             { 123, "NTP" },     { 143, "IMAP" },
             { 443, "HTTPS" },   { 613, "IPP" },
-            { 3306, "MySQL" },
+            { 3306, "MySQL" },  {5351, "NAT-PMP"}
         };
 
         public Port(int number, string? name = null)

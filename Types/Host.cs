@@ -22,9 +22,14 @@ namespace NetInspectLib.Types
             ports = new List<Port>();
         }
 
-        public void AddPort(int portNumber, string portName)
+        public void AddPort(int portNumber, string? portName = null)
         {
             Port port = new Port(portNumber, portName);
+            ports.Add(port);
+        }
+
+        public void AddPort(Port port)
+        {
             ports.Add(port);
         }
 
