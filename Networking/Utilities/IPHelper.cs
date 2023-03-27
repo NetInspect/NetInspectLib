@@ -2,7 +2,7 @@
 using System.Net;
 using System.Runtime.InteropServices;
 
-namespace NetInspectLib.Networking
+namespace NetInspectLib.Networking.Utilities
 {
     internal static class IPHelper
     {
@@ -83,7 +83,7 @@ namespace NetInspectLib.Networking
         public static IPAddress GetMask(int cidr)
         {
             uint mask = 0xffffffff;
-            mask <<= (32 - cidr);
+            mask <<= 32 - cidr;
             byte[] maskBytes = BitConverter.GetBytes(mask);
             Array.Reverse(maskBytes);
             return new IPAddress(maskBytes);
@@ -101,7 +101,7 @@ namespace NetInspectLib.Networking
                 throw new ArgumentOutOfRangeException(nameof(host), $"Host number must be between 0 and {maxHost}");
             }
             ip &= subnetMask;
-            ip <<= (IPAddress.NetworkToHostOrder((int)netAddr.AddressFamily) * 8);
+            ip <<= IPAddress.NetworkToHostOrder((int)netAddr.AddressFamily) * 8;
             ip += (uint)host;
             byte[] ipBytes = BitConverter.GetBytes(IPAddress.NetworkToHostOrder((int)ip));
             return new IPAddress(ipBytes);
