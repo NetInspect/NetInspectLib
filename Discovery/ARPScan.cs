@@ -1,13 +1,10 @@
-﻿using System.Net.Sockets;
-using System.Net;
+﻿using System.Net;
 using System.Runtime.InteropServices;
-
-using NetInspectLib.Networking;
 using System.Diagnostics;
 using System.Collections.Concurrent;
-using System.Threading;
+
 using NetInspectLib.Types;
-using System.Xml.Schema;
+using NetInspectLib.Networking.Utilities;
 
 namespace NetInspectLib.Discovery
 {
