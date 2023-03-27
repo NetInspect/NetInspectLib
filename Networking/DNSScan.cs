@@ -1,10 +1,10 @@
 using System.Net.Sockets;
 using System.Net;
-using System.Collections.Generic;
+using NetInspectLib.Types;
 
 public class DNSScanner
 {
-    public List<DNS> Scan(string target)
+    public List<DNS> DoDNSScan(string target)
     {
         var records = new List<DNS>();
 
@@ -14,8 +14,9 @@ public class DNSScanner
         {
             records.Add(new DNS
             {
-                Hostname = target,
-                IPAddress = address.ToString(),
+                //Hostname = target,
+                //IPAddress = address.ToString(),
+                Host = new Host(address.ToString(), target),
                 RecordType = "A",
                 TTL = (int)hostEntry.AddressList[0].AddressFamily,
                 Data = null,
@@ -29,13 +30,14 @@ public class DNSScanner
         {
             try
             {
-                var DNSs = Dns.GetHostEntry(target + "." + recordType);
+                var DNSs = Dns.GetHostEntry($"{target}.{recordType}");
                 foreach (var DNS in DNSs.AddressList)
                 {
                     records.Add(new DNS
                     {
-                        Hostname = target,
-                        IPAddress = DNS.ToString(),
+                        //Hostname = target,
+                        //IPAddress = DNS.ToString(),
+                        Host = new Host(DNS.ToString(), target),
                         RecordType = recordType,
                         TTL = (int)DNSs.AddressList[0].AddressFamily,
                         Data = null,
@@ -49,7 +51,7 @@ public class DNSScanner
                 // Ignore exceptions caused by records that don't exist
                 if (ex.SocketErrorCode != SocketError.HostNotFound && ex.SocketErrorCode != SocketError.NoData)
                 {
-                    throw;
+                    continue; //throw
                 }
             }
         }
