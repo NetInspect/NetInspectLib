@@ -2,8 +2,9 @@ using NetInspectLib.Types;
 
 public class DNS
 {
-    public Host? Host { get; set; }
-    public string? RecordType { get; set; }
+    public string Hostname { get; set; }
+    public string IPAddress { get; set; }
+    public string RecordType { get; set; }
     public int TTL { get; set; }
     public List<string>? Data { get; set; }
     public string? CName { get; set; }
