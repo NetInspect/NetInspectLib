@@ -1,12 +1,11 @@
-using System.Collections.Generic;
+using NetInspectLib.Types;
 
 public class DNS
 {
-    public string Hostname { get; set; }
-    public string IPAddress { get; set; }
-    public string RecordType { get; set; }
+    public Host? Host { get; set; }
+    public string? RecordType { get; set; }
     public int TTL { get; set; }
-    public List<string> Data { get; set; }
-    public string CName { get; set; }
-    public string NameServer { get; set; }
+    public List<string>? Data { get; set; }
+    public string? CName { get; set; }
+    public string? NameServer { get; set; }
 }
