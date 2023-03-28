@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Net;
+using NetInspectLib.Types;
 using System.Collections.Generic;
 
 public class DNSScanner
@@ -13,8 +14,7 @@ public class DNSScanner
         {
             records.Add(new DNS
             {
-                Hostname = target,
-                IPAddress = address.ToString(),
+                Host = new Host(address.ToString(), target),
                 RecordType = "A",
                 Data = null,
                 CName = hostEntry.HostName,
@@ -27,13 +27,13 @@ public class DNSScanner
         {
             try
             {
-                var DNSs = Dns.GetHostEntry(target + "." + recordType);
+                var DNSs = Dns.GetHostEntry($"{target}.{recordType}");
+
                 foreach (var DNS in DNSs.AddressList)
                 {
                     records.Add(new DNS
                     {
-                        Hostname = target,
-                        IPAddress = DNS.ToString(),
+                        Host = new Host(DNS.ToString(), target),
                         RecordType = recordType,
                         Data = null,
                         CName = hostEntry.HostName,
@@ -46,7 +46,7 @@ public class DNSScanner
             {
                 if (ex.SocketErrorCode != SocketError.HostNotFound && ex.SocketErrorCode != SocketError.NoData)
                 {
-                    throw;
+                    continue;
                 }
             }
         }
