@@ -1,56 +1,45 @@
-using System.Net.Sockets;
-using System.Net;
-using NetInspectLib.Types;
+/* Uses https://github.com/MichaCo/DnsClient.NET */
+
+using System;
 using System.Collections.Generic;
+using System.Net;
+using DnsClient;
+using DnsClient.Protocol;
 
-public class DNSScanner
+public class DnsLookup
 {
-    public List<DNS> DoDNSScan(string target)
+    private readonly LookupClient _dnsClient;
+
+    public DnsLookup(string dnsServer = null)
     {
-        var records = new List<DNS>();
-        var hostEntry = Dns.GetHostEntry(target);
-
-        foreach (var address in hostEntry.AddressList)
+        if (string.IsNullOrEmpty(dnsServer))
         {
-            records.Add(new DNS
-            {
-                Host = new Host(address.ToString(), target),
-                RecordType = "A",
-                Data = null,
-                CName = hostEntry.HostName,
-                NameServer = Dns.GetHostEntry(target).HostName
-            });
-
+            _dnsClient = new LookupClient();
         }
-
-        foreach (var recordType in new string[] { "CNAME", "MX", "TXT", "AAAA", "NS", "SOA", "PTR", "DNSKEY", "DS", "NAPTR" })
+        else
         {
-            try
-            {
-                var DNSs = Dns.GetHostEntry($"{target}.{recordType}");
+            _dnsClient = new LookupClient(IPAddress.Parse(dnsServer));
+        }
+    }
 
-                foreach (var DNS in DNSs.AddressList)
-                {
-                    records.Add(new DNS
-                    {
-                        Host = new Host(DNS.ToString(), target),
-                        RecordType = recordType,
-                        Data = null,
-                        CName = hostEntry.HostName,
-                        NameServer = Dns.GetHostEntry(target).HostName
-                    });
-                }
-            }
+    public List<string> Lookup(string hostOrIp, QueryType queryType = QueryType.ANY)
+    {
+        List<string> results = new List<string>();
+        try
+        {
+            IDnsQueryResponse response = _dnsClient.Query(hostOrIp, queryType);
+            results.Add($"Query type: {response.Questions[0].QuestionType}");
 
-            catch (SocketException ex)
+            foreach (DnsResourceRecord record in response.Answers)
             {
-                if (ex.SocketErrorCode != SocketError.HostNotFound && ex.SocketErrorCode != SocketError.NoData)
-                {
-                    continue;
-                }
+                results.Add($" {record.ToString()}");
+                // {DomainName} {RecordClass} {RecordType} {TimeToLive} {Data}
             }
         }
-
-        return records;
+        catch (DnsResponseException ex)
+        {
+            results.Add($"Query failed: {ex.Message}");
+        }
+        return results;
     }
 }
