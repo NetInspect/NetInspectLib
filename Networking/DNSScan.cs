@@ -22,7 +22,7 @@ public class DnsLookup
         }
     }
 
-    public List<string> Lookup(string hostOrIp, QueryType queryType = QueryType.ANY)
+    public List<string> DoDNSLookup(string hostOrIp, QueryType queryType = QueryType.ANY)
     {
         List<string> results = new List<string>();
         try
