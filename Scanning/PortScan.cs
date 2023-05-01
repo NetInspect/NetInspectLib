@@ -1,6 +1,14 @@
-﻿using System.Net;
-using System.Net.NetworkInformation;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using NetInspectLib.Discovery;
 using NetInspectLib.Types;
 
 namespace NetInspectLib.Scanning
@@ -14,76 +22,72 @@ namespace NetInspectLib.Scanning
             results = new List<Host>();
         }
 
-        public async Task<bool> DoPortScan(string ipAddress, string portRange)
+        public async Task<bool> DoScan(string networkMask, string portRange)
         {
-            try
+            var ports = ParsePortRange(portRange);
+
+            ICMPScan hostScan = new ICMPScan(networkMask);
+            Task<bool> scan = hostScan.DoScan();
+            bool success = await scan;
+            if (success)
             {
-                ThreadPool.SetMaxThreads(500, 500);
-
-                var addresses = await ResolveAddresses(ipAddress);
-                var ports = ParsePortRange(portRange);
-
-                Parallel.ForEach(addresses, address =>
+                foreach (Host host in hostScan.results)
                 {
-                    Host host = new Host(address);
-
-                    Parallel.ForEach(ports, async port =>
-                    {
-                        if (await CheckPortStatus(address, port, 3000))
-                        {
-                            host.AddPort(port);
-                        }
-                    });
-
-                    results.Add(host);
-                });
-
-                return true;
+                    results.Add(ScanHost(host, ports));
+                }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-                return false;
-            }
+            return true;
         }
 
-        private static async Task<List<string>> ResolveAddresses(string input)
+        private Host ScanHost(Host host, IEnumerable<int> ports)
         {
-            var addressList = new List<string>();
-
-            if (IPAddress.TryParse(input, out var address))
+            List<Thread> threads = new List<Thread>();
+            ConcurrentBag<Port> openPorts = new ConcurrentBag<Port>();
+            foreach (int portNum in ports)
             {
-                addressList.Add(input);
-            }
-            else if (IPAddress.TryParse(input.Split('/')[0], out var networkAddress))
-            {
-                if (!int.TryParse(input.Split('/')[1], out var cidrMask))
+                Thread thread = new Thread(() =>
                 {
-                    Console.WriteLine($"Invalid subnet mask: {input}");
-                    return addressList;
-                }
-
-                var subnetMask = ~0 << (32 - cidrMask);
-                var startAddress = BitConverter.ToInt32(networkAddress.GetAddressBytes(), 0) & subnetMask;
-                var endAddress = startAddress + ~subnetMask;
-                var addressBytes = BitConverter.GetBytes(startAddress);
-
-                while (BitConverter.ToInt32(addressBytes, 0) <= endAddress)
-                {
-                    var ipAddress = new IPAddress(addressBytes).ToString();
-                    if (await PingIPAddress(ipAddress))
+                    Port? port = ScanPort(host, portNum);
+                    if (port != null)
                     {
-                        addressList.Add(ipAddress);
+                        openPorts.Add(port);
                     }
-                    addressBytes = BitConverter.GetBytes(BitConverter.ToInt32(addressBytes, 0) + 1);
-                }
-            }
-            else
-            {
-                Console.WriteLine($"Invalid IP address or subnet mask: {input}");
+                });
+                threads.Add(thread);
+                thread.Start();
             }
 
-            return addressList;
+            foreach (Thread thread in threads) { thread.Join(); }
+
+            foreach (var openPort in openPorts.OrderBy(x => x.Number))
+            {
+                if (!host.GetPorts().Contains(openPort))
+                {
+                    host.AddPort(openPort);
+                }
+            }
+            return host;
+        }
+
+        private Port? ScanPort(Host host, int portNum)
+        {
+            using (var tcpClient = new TcpClient())
+            {
+                tcpClient.ReceiveTimeout = 500;
+                tcpClient.SendTimeout = 500;
+                try
+                {
+                    tcpClient.Connect(host.GetIPAddress(), portNum);
+                    Debug.WriteLine($"Host: {host.GetIPAddress()} Port {portNum} is OPEN");
+                    tcpClient.Close();
+                    return new Port(portNum);
+                }
+                catch (SocketException)
+                {
+                    tcpClient.Close();
+                    return null;
+                }
+            }
         }
 
         private static IEnumerable<int> ParsePortRange(string portRange)
@@ -94,7 +98,7 @@ namespace NetInspectLib.Scanning
             {
                 if (string.IsNullOrWhiteSpace(portRange))
                 {
-                    return ports;
+                    return Enumerable.Range(1, 1024);
                 }
 
                 foreach (var item in portRange.Split(','))
@@ -123,43 +127,6 @@ namespace NetInspectLib.Scanning
             {
                 Console.WriteLine($"Error parsing port range: {ex.Message}");
                 return Enumerable.Empty<int>();
-            }
-        }
-
-        private static async Task<bool> CheckPortStatus(string address, int port, int timeoutMilliseconds)
-        {
-            try
-            {
-                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                var connectTask = socket.ConnectAsync(address, port);
-                var timeoutTask = Task.Delay(timeoutMilliseconds);
-                var completedTask = await Task.WhenAny(connectTask, timeoutTask);
-
-                if (completedTask == connectTask)
-                {
-                    return true;
-                }
-                socket.Close();
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error checking port {port} on {address}: {ex.Message}");
-                return false;
-            }
-        }
-
-        private static async Task<bool> PingIPAddress(string ipAddress)
-        {
-            using var ping = new Ping();
-            try
-            {
-                var reply = await ping.SendPingAsync(ipAddress, 1000);
-                return reply.Status == IPStatus.Success;
-            }
-            catch (PingException)
-            {
-                return false;
             }
         }
     }

@@ -3,6 +3,11 @@ using System.Net.NetworkInformation;
 using System.Net;
 using System.Diagnostics;
 using NetInspectLib.Types;
+using NetInspectLib.Networking.Utilities;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace NetInspectLib.Discovery
 {
@@ -26,119 +31,90 @@ namespace NetInspectLib.Discovery
     /// </summary>
     public class ICMPScan
     {
-        private ConcurrentBag<string> activeIPs;
+        private string networkMask;
         public List<Host> results;
 
-        public ICMPScan()
+        public ICMPScan(string networkMask)
         {
-            activeIPs = new ConcurrentBag<string>();
+            this.networkMask = networkMask;
             results = new List<Host>();
         }
 
-        private (IPAddress ipAddress, int subnetMask) ValidateNetworkMask(string networkMask)
+        public ICMPScan(IPAddress ipAddress)
         {
-            try
-            {
-                var parts = networkMask.Split('/');
-                if (parts.Length != 2)
-                {
-                    throw new ArgumentException("Invalid network mask format. Expected format: xxx.xxx.xxx.xxx/xx");
-                }
-
-                if (!IPAddress.TryParse(parts[0], out var ipAddress))
-                {
-                    throw new ArgumentException("Invalid IP address");
-                }
-
-                if (!int.TryParse(parts[1], out var subnetMask) || subnetMask < 0 || subnetMask > 32)
-                {
-                    throw new ArgumentException("Invalid subnet mask. Must be a number between 0 and 32");
-                }
-
-                return (ipAddress, subnetMask);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[-] ValidateNetworkMask Error: {ex.Message}");
-                throw;
-            }
+            this.networkMask = ipAddress.ToString() + "/32";
+            results = new List<Host>();
         }
 
-        public async Task<bool> DoICMPScan(string networkMask)
+        public Task<bool> DoScan()
         {
             try
             {
-                var (ipAddress, subnetMask) = ValidateNetworkMask(networkMask);
-
-                int numberOfHosts = (int)Math.Pow(2, 32 - subnetMask) - 2;
-                if (subnetMask == 32)
+                if (!networkMask.Contains("/"))
                 {
-                    numberOfHosts = 1;
+                    networkMask += "/32";
                 }
 
-                byte[] subnetMaskBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(-1 << 32 - subnetMask));
+                var cidr = int.Parse(networkMask.Split('/')[1]);
+                var network = IPHelper.GetNetworkAddress(IPAddress.Parse(networkMask.Split('/')[0]), IPHelper.GetMask(cidr));
 
-                var pingTasks = Enumerable.Range(0, numberOfHosts)
-                    .Select(i => PingHostAsync(ipAddress, subnetMaskBytes, i));
+                var activeHosts = new ConcurrentBag<Host>();
+                List<Thread> threads = new List<Thread>();
 
-                var pingResults = await Task.WhenAll(pingTasks);
+                if (cidr == 32)
+                {
+                    Host? result = SendPingRequest(IPAddress.Parse(networkMask.Split('/')[0]));
+                    if (result != null) activeHosts.Add(result);
+                }
+                else
+                {
+                    for (int hostNum = 1; hostNum < (1 << (32 - cidr)) - 2; hostNum++)
+                    {
+                        Thread thread = new Thread(() =>
+                        {
+                            Host? result = SendPingRequest(network, cidr, hostNum);
+                            if (result != null) activeHosts.Add(result);
+                        });
+                        threads.Add(thread);
+                        thread.Start();
+                    }
 
-                var activeIPs = AddSuccessfulPingResults(pingResults);
+                    foreach (Thread thread in threads) { thread.Join(); }
+                }
 
-                results = SortAndConvertActiveIPs(activeIPs);
+                results = activeHosts.OrderBy(host => host, new HostComparer()).DistinctBy(host => host.GetIPAddress()).ToList();
 
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[-] DoPingSweep Error: {ex.Message}");
-                return false;
+                return Task.FromResult(false);
             }
         }
 
-        private async Task<PingReply> PingHostAsync(IPAddress ipAddress, byte[] subnetMaskBytes, int i)
+        private Host? SendPingRequest(IPAddress network, int cidr, int hostNum)
         {
-            byte[] nextIPAddressBytes = new byte[4];
-
-            for (int j = 0; j < 4; j++)
-            {
-                nextIPAddressBytes[j] = (byte)(ipAddress.GetAddressBytes()[j] & subnetMaskBytes[j]);
-            }
-
-            nextIPAddressBytes[3] += (byte)i;
-            IPAddress nextIPAddress = new IPAddress(nextIPAddressBytes);
+            var ip = IPHelper.GetAddress(network, cidr, hostNum);
 
             Ping ping = new Ping();
-            return await ping.SendPingAsync(nextIPAddress);
+            var pingResult = ping.Send(ip);
+            if (pingResult.Status == IPStatus.Success)
+            {
+                return new Host(ip);
+            }
+            return null;
         }
 
-        private ConcurrentBag<string> AddSuccessfulPingResults(PingReply[] pingResults)
+        private Host? SendPingRequest(IPAddress ipAddress)
         {
-            var activeIPs = new ConcurrentBag<string>();
-
-            foreach (var pingReply in pingResults.Where(r => r.Status == IPStatus.Success))
+            Ping ping = new Ping();
+            var pingResult = ping.Send(ipAddress);
+            if (pingResult.Status == IPStatus.Success)
             {
-                activeIPs.Add(pingReply.Address.ToString());
+                return new Host(ipAddress);
             }
-
-            return activeIPs;
-        }
-
-        private List<Host> SortAndConvertActiveIPs(ConcurrentBag<string> activeIPs)
-        {
-            List<Host> result = new List<Host>();
-
-            var temp = activeIPs
-                .Select(Version.Parse)
-                .OrderBy(arg => arg)
-                .Select(arg => arg.ToString())
-                .ToList();
-
-            foreach (var host in temp)
-            {
-                result.Add(new Host(host));
-            }
-            return result;
+            return null;
         }
     }
 }
