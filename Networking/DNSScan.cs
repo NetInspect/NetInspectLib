@@ -32,7 +32,13 @@ public class DnsLookup
 
             foreach (DnsResourceRecord record in response.Answers)
             {
-                results.Add($" {record.ToString()}");
+                results.Add(record.DomainName);
+                results.Add(record.RecordClass.ToString());
+                results.Add(record.RecordType.ToString());
+                results.Add(record.TimeToLive.ToString());
+                string[] parts = record.ToString().Split(' ');
+                string data = parts[parts.Length - 1];
+                results.Add($"{data}");
                 // {DomainName} {RecordClass} {RecordType} {TimeToLive} {Data}
             }
         }
