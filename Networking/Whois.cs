@@ -29,7 +29,6 @@ public class Whois
                     result += line + "\n";
                     if (line.StartsWith("refer:", System.StringComparison.OrdinalIgnoreCase))
                     {
-                        // If the WHOIS server returns a "refer" response, follow the new server and query again
                         string newServer = line.Substring(6).Trim();
                         result += Lookup(query, newServer, port);
                         break;
@@ -37,8 +36,7 @@ public class Whois
                 }
             }
         }
-
-        // Remove comments and blank lines from the response
+        
         result = Regex.Replace(result, "^#.*", "", RegexOptions.Multiline);
         result = Regex.Replace(result, "^\\s*$\n", "", RegexOptions.Multiline);
 
