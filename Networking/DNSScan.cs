@@ -6,6 +6,15 @@ using System.Net;
 using DnsClient;
 using DnsClient.Protocol;
 
+public class DnsRecord
+{
+    public string DomainName { get; set; }
+    public string RecordClass { get; set; }
+    public string RecordType { get; set; }
+    public string TimeToLive { get; set; }
+    public string Data { get; set; }
+}
+
 public class DnsLookup
 {
     private readonly LookupClient _dnsClient;
@@ -22,29 +31,40 @@ public class DnsLookup
         }
     }
 
-    public List<string> DoDNSLookup(string hostOrIp, QueryType queryType = QueryType.ANY)
+    public List<DnsRecord> DoDNSLookup(string hostOrIp, QueryType queryType = QueryType.ANY)
     {
-        List<string> results = new List<string>();
+        List<DnsRecord> results = new List<DnsRecord>();
         try
         {
             IDnsQueryResponse response = _dnsClient.Query(hostOrIp, queryType);
-            results.Add($"Query type: {response.Questions[0].QuestionType}");
+            string queryTypeString = response.Questions[0].QuestionType.ToString();
 
             foreach (DnsResourceRecord record in response.Answers)
             {
-                results.Add(record.DomainName);
-                results.Add(record.RecordClass.ToString());
-                results.Add(record.RecordType.ToString());
-                results.Add(record.TimeToLive.ToString());
                 string[] parts = record.ToString().Split(' ');
                 string data = parts[parts.Length - 1];
-                results.Add($"{data}");
-                // {DomainName} {RecordClass} {RecordType} {TimeToLive} {Data}
+                DnsRecord dnsRecord = new DnsRecord
+                {
+                    DomainName = record.DomainName,
+                    RecordClass = record.RecordClass.ToString(),
+                    RecordType = record.RecordType.ToString(),
+                    TimeToLive = record.TimeToLive.ToString(),
+                    Data = data
+                };
+                results.Add(dnsRecord);
             }
         }
         catch (DnsResponseException ex)
         {
-            results.Add($"Query failed: {ex.Message}");
+            DnsRecord dnsRecord = new DnsRecord
+            {
+                DomainName = hostOrIp,
+                RecordClass = "Query failed",
+                RecordType = ex.Message,
+                TimeToLive = TimeSpan.Zero.ToString(),
+                Data = ""
+            };
+            results.Add(dnsRecord);
         }
         return results;
     }
