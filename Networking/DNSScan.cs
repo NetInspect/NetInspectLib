@@ -1,5 +1,3 @@
-/* Uses https://github.com/MichaCo/DnsClient.NET */
-
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -31,12 +29,12 @@ public class DnsLookup
         }
     }
 
-    public List<DnsRecord> DoDNSLookup(string hostOrIp, QueryType queryType = QueryType.ANY)
+    public List<DnsRecord> DoDNSLookup(string domain_or_ip, QueryType queryType = QueryType.ANY)
     {
         List<DnsRecord> results = new List<DnsRecord>();
         try
         {
-            IDnsQueryResponse response = _dnsClient.Query(hostOrIp, queryType);
+            IDnsQueryResponse response = _dnsClient.Query(domain_or_ip, queryType);
             string queryTypeString = response.Questions[0].QuestionType.ToString();
 
             foreach (DnsResourceRecord record in response.Answers)
@@ -58,7 +56,7 @@ public class DnsLookup
         {
             DnsRecord dnsRecord = new DnsRecord
             {
-                DomainName = hostOrIp,
+                DomainName = domain_or_ip,
                 RecordClass = "Query failed",
                 RecordType = ex.Message,
                 TimeToLive = TimeSpan.Zero.ToString(),
