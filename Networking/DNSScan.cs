@@ -1,56 +1,69 @@
-using System.Net.Sockets;
-using System.Net;
-using NetInspectLib.Types;
+using System;
 using System.Collections.Generic;
+using System.Net;
+using DnsClient;
+using DnsClient.Protocol;
 
-public class DNSScanner
+public class DnsRecord
 {
-    public List<DNS> DoDNSScan(string target)
+    public string DomainName { get; set; }
+    public string RecordClass { get; set; }
+    public string RecordType { get; set; }
+    public string TimeToLive { get; set; }
+    public string Data { get; set; }
+}
+
+public class DnsLookup
+{
+    private readonly LookupClient _dnsClient;
+
+    public DnsLookup(string dnsServer = null)
     {
-        var records = new List<DNS>();
-        var hostEntry = Dns.GetHostEntry(target);
-
-        foreach (var address in hostEntry.AddressList)
+        if (string.IsNullOrEmpty(dnsServer))
         {
-            records.Add(new DNS
-            {
-                Host = new Host(address.ToString(), target),
-                RecordType = "A",
-                Data = null,
-                CName = hostEntry.HostName,
-                NameServer = Dns.GetHostEntry(target).HostName
-            });
-
+            _dnsClient = new LookupClient();
         }
-
-        foreach (var recordType in new string[] { "CNAME", "MX", "TXT", "AAAA", "NS", "SOA", "PTR", "DNSKEY", "DS", "NAPTR" })
+        else
         {
-            try
-            {
-                var DNSs = Dns.GetHostEntry($"{target}.{recordType}");
+            _dnsClient = new LookupClient(IPAddress.Parse(dnsServer));
+        }
+    }
 
-                foreach (var DNS in DNSs.AddressList)
-                {
-                    records.Add(new DNS
-                    {
-                        Host = new Host(DNS.ToString(), target),
-                        RecordType = recordType,
-                        Data = null,
-                        CName = hostEntry.HostName,
-                        NameServer = Dns.GetHostEntry(target).HostName
-                    });
-                }
-            }
+    public List<DnsRecord> DoDNSLookup(string domain_or_ip, QueryType queryType = QueryType.ANY)
+    {
+        List<DnsRecord> results = new List<DnsRecord>();
+        try
+        {
+            IDnsQueryResponse response = _dnsClient.Query(domain_or_ip, queryType);
+            string queryTypeString = response.Questions[0].QuestionType.ToString();
 
-            catch (SocketException ex)
+            foreach (DnsResourceRecord record in response.Answers)
             {
-                if (ex.SocketErrorCode != SocketError.HostNotFound && ex.SocketErrorCode != SocketError.NoData)
+                string[] parts = record.ToString().Split(' ');
+                string data = parts[parts.Length - 1];
+                DnsRecord dnsRecord = new DnsRecord
                 {
-                    continue;
-                }
+                    DomainName = record.DomainName,
+                    RecordClass = record.RecordClass.ToString(),
+                    RecordType = record.RecordType.ToString(),
+                    TimeToLive = record.TimeToLive.ToString(),
+                    Data = data
+                };
+                results.Add(dnsRecord);
             }
         }
-
-        return records;
+        catch (DnsResponseException ex)
+        {
+            DnsRecord dnsRecord = new DnsRecord
+            {
+                DomainName = domain_or_ip,
+                RecordClass = "Query failed",
+                RecordType = ex.Message,
+                TimeToLive = TimeSpan.Zero.ToString(),
+                Data = ""
+            };
+            results.Add(dnsRecord);
+        }
+        return results;
     }
 }
