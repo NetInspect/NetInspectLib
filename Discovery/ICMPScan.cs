@@ -8,6 +8,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Collections.ObjectModel;
+
+
 
 namespace NetInspectLib.Discovery
 {
@@ -82,7 +85,7 @@ namespace NetInspectLib.Discovery
                     foreach (Thread thread in threads) { thread.Join(); }
                 }
 
-                results = activeHosts.OrderBy(host => host, new HostComparer()).DistinctBy(host => host.GetIPAddress()).ToList();
+                results = activeHosts.OrderBy(host => host.GetIPAddress()).DistinctBy(host => host.GetIPAddress()).ToList();
 
                 return Task.FromResult(true);
             }

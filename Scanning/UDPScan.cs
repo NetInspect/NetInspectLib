@@ -24,8 +24,8 @@ namespace NetInspectLib.Scanning
 
         public async Task<bool> DoUDPScan(string networkMask)
         {
-            ICMPScan hostScan = new ICMPScan();
-            Task<bool> scan = hostScan.DoICMPScan(networkMask);
+            ICMPScan hostScan = new ICMPScan(networkMask);
+            Task<bool> scan = hostScan.DoScan();
             bool success = await scan;
             if (success)
             {
