@@ -6,18 +6,18 @@ using DnsClient.Protocol;
 
 public class DnsRecord
 {
-    public string DomainName { get; set; }
-    public string RecordClass { get; set; }
-    public string RecordType { get; set; }
-    public string TimeToLive { get; set; }
-    public string Data { get; set; }
+    public string? DomainName { get; set; }
+    public string? RecordClass { get; set; }
+    public string? RecordType { get; set; }
+    public string? TimeToLive { get; set; }
+    public string? Data { get; set; }
 }
 
 public class DnsLookup
 {
     private readonly LookupClient _dnsClient;
 
-    public DnsLookup(string dnsServer = null)
+    public DnsLookup(string? dnsServer = null)
     {
         if (string.IsNullOrEmpty(dnsServer))
         {
