@@ -4,61 +4,34 @@ namespace NetInspectLib.Types
 {
     public class Host
     {
-        private string? hostname { get; set; }
-        private IPAddress ipAdress { get; set; }
-        private string? macAddress { get; set; }
-        private List<Port> ports { get; set; }
+        public string? Hostname { get; set; }
+        public IPAddress IPAdress { get; set; }
+        public string? MacAddress { get; set; }
+        public List<Port> Ports { get; private set; } = new List<Port>();
 
-        public Host(string _ipAdress, string? _hostname = null, string? _macAddress = null)
+        public Host(string ipAdress, string? hostname = null, string? macAddress = null)
         {
-            hostname = _hostname;
-            ipAdress = IPAddress.Parse(_ipAdress);
-            macAddress = _macAddress;
-            ports = new List<Port>();
+            Hostname = hostname;
+            IPAdress = IPAddress.Parse(ipAdress);
+            MacAddress = macAddress;
         }
 
-        public Host(IPAddress _ipAdress, string? _hostname = null, string? _macAddress = null)
+        public Host(IPAddress ipAdress, string? hostname = null, string? macAddress = null)
         {
-            hostname = _hostname;
-            ipAdress = _ipAdress;
-            macAddress = _macAddress;
-            ports = new List<Port>();
+            Hostname = hostname;
+            IPAdress = ipAdress;
+            MacAddress = macAddress;
         }
 
         public void AddPort(int portNumber, string? portName = null)
         {
-            Port port = new Port(portNumber, portName);
-            ports.Add(port);
+            Port port = new(portNumber, portName);
+            Ports.Add(port);
         }
 
         public void AddPort(Port port)
         {
-            ports.Add(port);
-        }
-
-        public string GetHostname()
-        {
-            return hostname;
-        }
-
-        public IPAddress GetIPAddress()
-        {
-            return ipAdress;
-        }
-
-        public string? GetMacAddress()
-        {
-            return macAddress;
-        }
-
-        public void SetMacAddress(string _macAddress)
-        {
-            macAddress = _macAddress;
-        }
-
-        public List<Port> GetPorts()
-        {
-            return ports;
+            Ports.Add(port);
         }
     }
 }

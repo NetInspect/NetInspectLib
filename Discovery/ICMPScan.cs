@@ -11,7 +11,6 @@ using System.Threading;
 using System.Collections.ObjectModel;
 
 
-
 namespace NetInspectLib.Discovery
 {
     /// <summary>
@@ -63,6 +62,7 @@ namespace NetInspectLib.Discovery
 
                 var activeHosts = new ConcurrentBag<Host>();
                 List<Thread> threads = new List<Thread>();
+                List<Task> tasks = new();
 
                 if (cidr == 32)
                 {
@@ -85,7 +85,7 @@ namespace NetInspectLib.Discovery
                     foreach (Thread thread in threads) { thread.Join(); }
                 }
 
-                results = activeHosts.OrderBy(host => host.GetIPAddress()).DistinctBy(host => host.GetIPAddress()).ToList();
+                results = activeHosts.OrderBy(host => host.IPAdress.ToString()).DistinctBy(host => host.IPAdress.ToString()).ToList();
 
                 return Task.FromResult(true);
             }
@@ -99,6 +99,9 @@ namespace NetInspectLib.Discovery
         private Host? SendPingRequest(IPAddress network, int cidr, int hostNum)
         {
             var ip = IPHelper.GetAddress(network, cidr, hostNum);
+
+            if (ip == null)
+                return null;
 
             Ping ping = new Ping();
             var pingResult = ping.Send(ip);

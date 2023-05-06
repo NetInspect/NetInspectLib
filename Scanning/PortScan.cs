@@ -61,7 +61,7 @@ namespace NetInspectLib.Scanning
 
             foreach (var openPort in openPorts.OrderBy(x => x.Number))
             {
-                if (!host.GetPorts().Contains(openPort))
+                if (!host.Ports.Contains(openPort))
                 {
                     host.AddPort(openPort);
                 }
@@ -77,8 +77,8 @@ namespace NetInspectLib.Scanning
                 tcpClient.SendTimeout = 500;
                 try
                 {
-                    tcpClient.Connect(host.GetIPAddress(), portNum);
-                    Debug.WriteLine($"Host: {host.GetIPAddress()} Port {portNum} is OPEN");
+                    tcpClient.Connect(host.IPAdress, portNum);
+                    Debug.WriteLine($"Host: {host.IPAdress} Port {portNum} is OPEN");
                     tcpClient.Close();
                     return new Port(portNum);
                 }
