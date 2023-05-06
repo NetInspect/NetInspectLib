@@ -13,6 +13,8 @@ using NetInspectLib.Types;
 
 namespace NetInspectLib.Scanning
 {
+   
+
     public class PortScan
     {
         public List<Host> results { get; }
@@ -21,7 +23,7 @@ namespace NetInspectLib.Scanning
         {
             results = new List<Host>();
         }
-
+        
         public async Task<bool> DoPortScan(string networkMask, string portRange)
         {
             var ports = ParsePortRange(portRange);
