@@ -22,7 +22,7 @@ namespace NetInspectLib.Scanning
             results = new List<Host>();
         }
 
-        public async Task<bool> DoScan(string networkMask, string portRange)
+        public async Task<bool> DoPortScan(string networkMask, string portRange)
         {
             var ports = ParsePortRange(portRange);
 
