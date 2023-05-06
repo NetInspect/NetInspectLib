@@ -67,7 +67,7 @@ namespace NetInspectLib.Discovery
 
                 foreach (var result in scanResults.OrderBy(x => x, new IPv4Comparer()).ToList())
                 {
-                    if (!results.Any(ip => ip.GetIPAddress().ToString() == result[0]))
+                    if (!results.Any(ip => ip.IPAdress.ToString() == result[0]))
                     {
                         Host host = new Host(result[0], result[1]);
                         results.Add(host);

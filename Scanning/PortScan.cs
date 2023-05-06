@@ -13,6 +13,8 @@ using NetInspectLib.Types;
 
 namespace NetInspectLib.Scanning
 {
+   
+
     public class PortScan
     {
         public List<Host> results { get; }
@@ -21,8 +23,8 @@ namespace NetInspectLib.Scanning
         {
             results = new List<Host>();
         }
-
-        public async Task<bool> DoScan(string networkMask, string portRange)
+        
+        public async Task<bool> DoPortScan(string networkMask, string portRange)
         {
             var ports = ParsePortRange(portRange);
 
@@ -61,7 +63,7 @@ namespace NetInspectLib.Scanning
 
             foreach (var openPort in openPorts.OrderBy(x => x.Number))
             {
-                if (!host.GetPorts().Contains(openPort))
+                if (!host.Ports.Contains(openPort))
                 {
                     host.AddPort(openPort);
                 }
@@ -77,8 +79,8 @@ namespace NetInspectLib.Scanning
                 tcpClient.SendTimeout = 500;
                 try
                 {
-                    tcpClient.Connect(host.GetIPAddress(), portNum);
-                    Debug.WriteLine($"Host: {host.GetIPAddress()} Port {portNum} is OPEN");
+                    tcpClient.Connect(host.IPAdress, portNum);
+                    Debug.WriteLine($"Host: {host.IPAdress} Port {portNum} is OPEN");
                     tcpClient.Close();
                     return new Port(portNum);
                 }

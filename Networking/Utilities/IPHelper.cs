@@ -89,17 +89,17 @@ namespace NetInspectLib.Networking.Utilities
             return new IPAddress(maskBytes);
         }
 
-        public static IPAddress GetAddress(IPAddress netAddr, int cidr, int host)
+        public static IPAddress? GetAddress(IPAddress netAddr, int cidr, int host)
         {
             byte[] bytes = netAddr.GetAddressBytes();
             Array.Reverse(bytes);
             uint ip = BitConverter.ToUInt32(bytes, 0);
             uint subnetMask = ~(uint.MaxValue >> cidr);
             int maxHost = (int)Math.Pow(2, 32 - cidr) - 2;
+
             if (host < 0 || host > maxHost)
-            {
-                throw new ArgumentOutOfRangeException(nameof(host), $"Host number must be between 0 and {maxHost}");
-            }
+                return null;
+
             ip &= subnetMask;
             ip <<= IPAddress.NetworkToHostOrder((int)netAddr.AddressFamily) * 8;
             ip += (uint)host;

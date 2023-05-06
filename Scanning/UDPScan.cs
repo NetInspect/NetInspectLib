@@ -59,7 +59,7 @@ namespace NetInspectLib.Scanning
 
             foreach (var openPort in openPorts.OrderBy(x => x.Number))
             {
-                if (!host.GetPorts().Contains(openPort))
+                if (!host.Ports.Contains(openPort))
                 {
                     host.AddPort(openPort);
                 }
@@ -76,11 +76,11 @@ namespace NetInspectLib.Scanning
                 try
                 {
                     Byte[] sendBytes = Encoding.ASCII.GetBytes("Is this port open");
-                    udpClient.Send(sendBytes, sendBytes.Length, host.GetIPAddress().ToString(), portNum);
+                    udpClient.Send(sendBytes, sendBytes.Length, host.IPAdress.ToString(), portNum);
 
                     var remoteEP = new IPEndPoint(IPAddress.Any, portNum);
                     var response = udpClient.Receive(ref remoteEP);
-                    Debug.WriteLine($"Host: {host.GetIPAddress()} Port {portNum} is OPEN");
+                    Debug.WriteLine($"Host: {host.IPAdress} Port {portNum} is OPEN");
                     udpClient.Close();
                     return new Port(portNum);
                 }
