@@ -5,7 +5,7 @@
         public int Number { get; }
         public string Name { get; }
 
-        private Dictionary<int, string> knownPorts = new Dictionary<int, string>()
+        private static readonly Dictionary<int, string> knownPorts = new Dictionary<int, string>()
         {
             { 20, "FTP Data" }, { 21, "FTP Control" },
             { 22, "SSH" },      { 23, "Telnet" },
