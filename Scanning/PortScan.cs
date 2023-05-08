@@ -13,6 +13,24 @@ using NetInspectLib.Types;
 
 namespace NetInspectLib.Scanning
 {
+    /// <summary>
+    /// Class for scanning Ports
+    /// <example>
+    /// Usage
+    /// <code>
+    ///     PortScan portscanner = new PortScan();
+    ///     Task<bool> scan = portscanner.DoPortScan("192.168.1.0/24", "1-1000");
+    ///     bool success = await portscanner;
+    ///     if(success)
+    ///     {
+    ///         foreach(host in portscanner.results)
+    ///         {
+    ///             //Do Something
+    ///         }
+    ///     }
+    /// </code>
+    /// </example>
+    /// </summary>
     public class PortScan
     {
         public List<Host> results { get; }
@@ -28,7 +46,7 @@ namespace NetInspectLib.Scanning
         /// <param name="networkMask">The network mask to scan in CIDR notation (e.g. "192.168.0.0/24" or ). If no mask is provided the ICMPScan.cs added a /32 to scan a single IP. </param>
         /// <param name="portRange">The range of ports to scan (e.g 1-100 or 80, 433, 22). If not provided default is 1-1024. </param>
         /// <returns>A boolean value of True if the scan completed successfully, otherwise false</returns>
-        /// 
+        
         public async Task<bool> DoPortScan(string networkMask, string portRange)
         {
             var ports = ParsePortRange(portRange);
