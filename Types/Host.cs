@@ -1,37 +1,74 @@
-﻿using System.Net;
+﻿using NetInspectLib.Types;
+using System.Net;
 
-namespace NetInspectLib.Types
+public class Host
 {
-    public class Host
+    private string? _hostname;
+    public string? Hostname
     {
-        public string? Hostname { get; set; }
-        public IPAddress IPAdress { get; set; }
-        public string? MacAddress { get; set; }
-        public List<Port> Ports { get; private set; } = new List<Port>();
-
-        public Host(string ipAdress, string? hostname = null, string? macAddress = null)
+        get => _hostname;
+        set
         {
-            Hostname = hostname;
-            IPAdress = IPAddress.Parse(ipAdress);
-            MacAddress = macAddress;
-        }
-
-        public Host(IPAddress ipAdress, string? hostname = null, string? macAddress = null)
-        {
-            Hostname = hostname;
-            IPAdress = ipAdress;
-            MacAddress = macAddress;
-        }
-
-        public void AddPort(int portNumber, string? portName = null)
-        {
-            Port port = new(portNumber, portName);
-            Ports.Add(port);
-        }
-
-        public void AddPort(Port port)
-        {
-            Ports.Add(port);
+            // do validation here on "value"
+            _hostname = value;
         }
     }
+
+    private string? _macAddress;
+    public string? MacAddress
+    {
+        get => _macAddress;
+        set
+        {
+            // do validation here on "value"
+            _macAddress = value;
+        }
+    }
+
+    private IPAddress _ipAddress;
+    public IPAddress IPAddress
+    {
+        get => _ipAddress;
+        set
+        {
+            // do validation here on "value"
+            _ipAddress = value;
+        }
+    }
+
+    public List<Port> Ports { get; private set; } = new List<Port>();
+
+    public Host(string ipAddress, string? hostname = null, string? macAddress = null)
+    {
+        Hostname = hostname;
+        IPAddress = IPAddress.Parse(ipAddress);
+        MacAddress = macAddress;
+    }
+
+    public Host(IPAddress ipAddress, string? hostname = null, string? macAddress = null)
+    {
+        Hostname = hostname;
+        IPAddress = ipAddress;
+        MacAddress = macAddress;
+    }
+
+    public void AddPort(int portNumber, string? portName = null)
+    {
+        Port port = new(portNumber, portName);
+        Ports.Add(port);
+    }
+
+    public void AddPort(Port port)
+    {
+        Ports.Add(port);
+    }
 }
+
+
+
+
+
+
+
+
+
