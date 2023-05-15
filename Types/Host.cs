@@ -35,7 +35,7 @@ public class Host
         get => _macAddress;
         set
         {
-            if (value != null || value != string.Empty)
+            if (value != null && value != string.Empty)
             {
                 Regex r = new Regex("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})|([0-9a-fA-F]{4}\\.[0-9a-fA-F]{4}\\.[0-9a-fA-F]{4})$");
                 if (r.IsMatch(value)) _macAddress = value;
@@ -65,15 +65,16 @@ public class Host
     public Host(string ipAddress, string? hostname = null, string? macAddress = null)
     {
         IPAddress = IPAddress.Parse(ipAddress);
-        Hostname = hostname ?? string.Empty;
-        MacAddress = macAddress ?? string.Empty;
+        if (hostname != null) Hostname = hostname;
+        if (macAddress != null) MacAddress = macAddress;
     }
 
     public Host(IPAddress ipAddress, string? hostname = null, string? macAddress = null)
     {
         IPAddress = ipAddress;
-        Hostname = hostname ?? string.Empty;
-        MacAddress = macAddress ?? string.Empty;
+
+        if (hostname != null) Hostname = hostname;
+        if (macAddress != null) MacAddress = macAddress;
     }
 
     public void AddPort(int portNumber, PortStatus portStatus, string? portName = null)
