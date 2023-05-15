@@ -59,5 +59,45 @@ namespace NetInspectLib.Networking.Utilities
                 Marshal.FreeHGlobal(tcpTablePtr);
             }
         }
+
+        public static IEnumerable<int> ParsePortRange(string portRange)
+        {
+            var ports = new List<int>();
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(portRange))
+                {
+                    return Enumerable.Range(1, 1024);
+                }
+
+                foreach (var item in portRange.Split(','))
+                {
+                    var range = item.Trim().Split('-');
+
+                    if (range.Length == 1)
+                    {
+                        if (int.TryParse(range[0], out var port))
+                        {
+                            ports.Add(port);
+                        }
+                    }
+                    else if (range.Length == 2)
+                    {
+                        if (int.TryParse(range[0], out var start) && int.TryParse(range[1], out var end))
+                        {
+                            ports.AddRange(Enumerable.Range(start, end - start + 1));
+                        }
+                    }
+                }
+
+                return ports.Distinct();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing port range: {ex.Message}");
+                return Enumerable.Empty<int>();
+            }
+        }
     }
 }

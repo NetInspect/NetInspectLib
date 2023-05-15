@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NetInspectLib.Discovery;
 using NetInspectLib.Networking;
+using NetInspectLib.Networking.Utilities;
 using NetInspectLib.Types;
 
 namespace NetInspectLib.Scanning
@@ -22,8 +23,10 @@ namespace NetInspectLib.Scanning
             results = new List<Host>();
         }
 
-        public async Task<bool> DoUDPScan(string networkMask)
+        public async Task<bool> DoUDPScan(string networkMask, string portRange)
         {
+            var ports = PortUtility.ParsePortRange(portRange);
+
             ICMPScan hostScan = new ICMPScan(networkMask);
             Task<bool> scan = hostScan.DoScan();
             bool success = await scan;
@@ -31,17 +34,17 @@ namespace NetInspectLib.Scanning
             {
                 foreach (Host host in hostScan.results)
                 {
-                    results.Add(ScanHost(host));
+                    results.Add(ScanHost(host, ports));
                 }
             }
             return true;
         }
 
-        private Host ScanHost(Host host)
+        private Host ScanHost(Host host, IEnumerable<int> ports)
         {
             List<Thread> threads = new List<Thread>();
             ConcurrentBag<Port> openPorts = new ConcurrentBag<Port>();
-            for (int portNum = 1; portNum <= 1024; portNum++)
+            foreach (var portNum in ports)//for (int portNum = 1; portNum <= 1024; portNum++)
             {
                 Thread thread = new Thread(() =>
                 {
