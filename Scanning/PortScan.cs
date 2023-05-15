@@ -6,24 +6,6 @@ using NetInspectLib.Networking.Utilities;
 
 namespace NetInspectLib.Scanning
 {
-    /// <summary>
-    /// Class for scanning Ports
-    /// <example>
-    /// Usage
-    /// <code>
-    ///     PortScan portscanner = new PortScan();
-    ///     Task<bool> scan = portscanner.DoPortScan("192.168.1.0/24", "1-1000");
-    ///     bool success = await portscanner;
-    ///     if(success)
-    ///     {
-    ///         foreach(host in portscanner.results)
-    ///         {
-    ///             //Do Something
-    ///         }
-    ///     }
-    /// </code>
-    /// </example>
-    /// </summary>
     public class PortScan
     {
         public List<Host> results { get; }
@@ -33,49 +15,42 @@ namespace NetInspectLib.Scanning
             results = new List<Host>();
         }
 
-        /// <summary>
-        /// Scans a range or single IP address + a single or range of ports specified for the status of the ports.
-        /// </summary>
-        /// <param name="networkMask">The network mask to scan in CIDR notation (e.g. "192.168.0.0/24" or ). If no mask is provided the ICMPScan.cs added a /32 to scan a single IP. </param>
-        /// <param name="portRange">The range of ports to scan (e.g 1-100 or 80, 433, 22). If not provided default is 1-1024. </param>
-        /// <returns>A boolean value of True if the scan completed successfully, otherwise false</returns>
-
         public async Task<bool> DoPortScan(string networkMask, string portRange)
         {
             var ports = PortUtility.ParsePortRange(portRange);
 
             ICMPScan hostScan = new ICMPScan(networkMask);
-            bool success = await hostScan.DoScan();
+            Task<bool> scan = hostScan.DoScan();
+            bool success = await scan;
             if (success)
             {
-                List<Task<Host>> hostTasks = new List<Task<Host>>();
                 foreach (Host host in hostScan.results)
                 {
-                    hostTasks.Add(ScanHost(host, ports));
+                    results.Add(ScanHost(host, ports));
                 }
-                var hosts = await Task.WhenAll(hostTasks);
-                results.AddRange(hosts);
             }
             return true;
         }
 
-        private async Task<Host> ScanHost(Host host, IEnumerable<int> ports)
+        private Host ScanHost(Host host, IEnumerable<int> ports)
         {
+            List<Thread> threads = new List<Thread>();
             ConcurrentBag<Port> openPorts = new ConcurrentBag<Port>();
-            List<Task> portTasks = new List<Task>();
-            foreach (int portNum in ports)
+            foreach (var portNum in ports)//for (int portNum = 1; portNum <= 1024; portNum++)
             {
-                portTasks.Add(Task.Run(async () =>
+                Thread thread = new Thread(() =>
                 {
-                    Port? port = await ScanPort(host, portNum);
+                    Port? port = ScanPort(host, portNum);
                     if (port != null)
                     {
                         openPorts.Add(port);
                     }
-                }));
+                });
+                threads.Add(thread);
+                thread.Start();
             }
 
-            await Task.WhenAll(portTasks);
+            foreach (Thread thread in threads) { thread.Join(); }
 
             foreach (var openPort in openPorts.OrderBy(x => x.Number))
             {
@@ -87,7 +62,7 @@ namespace NetInspectLib.Scanning
             return host;
         }
 
-        private async Task<Port?> ScanPort(Host host, int portNum)
+        private Port? ScanPort(Host host, int portNum)
         {
             using (var tcpClient = new TcpClient())
             {
@@ -95,7 +70,7 @@ namespace NetInspectLib.Scanning
                 tcpClient.SendTimeout = 500;
                 try
                 {
-                    await tcpClient.ConnectAsync(host.IPAddress, portNum);
+                    tcpClient.Connect(host.IPAddress, portNum);
                     tcpClient.Close();
                     return new Port(portNum, PortStatus.Open);
                 }
