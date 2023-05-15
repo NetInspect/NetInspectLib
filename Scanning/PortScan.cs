@@ -86,14 +86,12 @@ namespace NetInspectLib.Scanning
             return host;
         }
 
-
-
         private async Task<Port?> ScanPort(Host host, int portNum)
         {
             using (var tcpClient = new TcpClient())
             {
-                tcpClient.ReceiveTimeout = 500;
-                tcpClient.SendTimeout = 500;
+                tcpClient.ReceiveTimeout = 100;
+                tcpClient.SendTimeout = 100;
                 try
                 {
                     await tcpClient.ConnectAsync(host.IPAddress, portNum);
