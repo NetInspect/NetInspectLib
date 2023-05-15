@@ -85,7 +85,7 @@ namespace NetInspectLib.Discovery
                     foreach (Thread thread in threads) { thread.Join(); }
                 }
 
-                results = activeHosts.OrderBy(host => host.IPAdress.ToString()).DistinctBy(host => host.IPAdress.ToString()).ToList();
+                results = activeHosts.OrderBy(host => host.IPAddress.ToString()).DistinctBy(host => host.IPAddress.ToString()).ToList();
 
                 return Task.FromResult(true);
             }

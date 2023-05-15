@@ -76,11 +76,11 @@ namespace NetInspectLib.Scanning
                 try
                 {
                     Byte[] sendBytes = Encoding.ASCII.GetBytes("Is this port open");
-                    udpClient.Send(sendBytes, sendBytes.Length, host.IPAdress.ToString(), portNum);
+                    udpClient.Send(sendBytes, sendBytes.Length, host.IPAddress.ToString(), portNum);
 
                     var remoteEP = new IPEndPoint(IPAddress.Any, portNum);
                     var response = udpClient.Receive(ref remoteEP);
-                    Debug.WriteLine($"Host: {host.IPAdress} Port {portNum} is OPEN");
+                    Debug.WriteLine($"Host: {host.IPAddress} Port {portNum} is OPEN");
                     udpClient.Close();
                     return new Port(portNum);
                 }

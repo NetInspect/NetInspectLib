@@ -2,7 +2,6 @@
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Collections.Concurrent;
-
 using NetInspectLib.Types;
 using NetInspectLib.Networking.Utilities;
 
@@ -67,7 +66,7 @@ namespace NetInspectLib.Discovery
 
                 foreach (var result in scanResults.OrderBy(x => x, new IPv4Comparer()).ToList())
                 {
-                    if (!results.Any(ip => ip.IPAdress.ToString() == result[0]))
+                    if (!results.Any(ip => ip.IPAddress.ToString() == result[0]))
                     {
                         Host host = new Host(result[0], result[1]);
                         results.Add(host);

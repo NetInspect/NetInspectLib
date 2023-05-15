@@ -102,7 +102,7 @@ namespace NetInspectLib.Scanning
                 tcpClient.SendTimeout = 500;
                 try
                 {
-                    await tcpClient.ConnectAsync(host.IPAdress, portNum);
+                    await tcpClient.ConnectAsync(host.IPAddress, portNum);
                     tcpClient.Close();
                     return new Port(portNum);
                 }
