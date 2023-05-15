@@ -104,7 +104,7 @@ namespace NetInspectLib.Scanning
                 {
                     await tcpClient.ConnectAsync(host.IPAddress, portNum);
                     tcpClient.Close();
-                    return new Port(portNum);
+                    return new Port(portNum, PortStatus.Open);
                 }
                 catch (SocketException)
                 {

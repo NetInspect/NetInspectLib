@@ -82,7 +82,7 @@ namespace NetInspectLib.Scanning
                     var response = udpClient.Receive(ref remoteEP);
                     Debug.WriteLine($"Host: {host.IPAddress} Port {portNum} is OPEN");
                     udpClient.Close();
-                    return new Port(portNum);
+                    return new Port(portNum, PortStatus.Open);
                 }
                 catch (SocketException e)
                 {

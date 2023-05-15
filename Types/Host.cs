@@ -1,5 +1,7 @@
 ﻿using NetInspectLib.Types;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 
 public class Host
 {
@@ -10,7 +12,21 @@ public class Host
         set
         {
             // do validation here on "value"
-            _hostname = value;
+            if (value != null)
+            {
+                if (value.Contains("\\")) throw new ArgumentException($"Hostname contains invailed character: \\");
+                if (value.Contains("/")) throw new ArgumentException($"Hostname contains invailed character: /");
+                if (value.Contains(":")) throw new ArgumentException($"Hostname contains invailed character: :");
+                if (value.Contains("*")) throw new ArgumentException($"Hostname contains invailed character: *");
+                if (value.Contains("?")) throw new ArgumentException($"Hostname contains invailed character: ?");
+                if (value.Contains("\"")) throw new ArgumentException($"Hostname contains invailed character: \"");
+                if (value.Contains("<")) throw new ArgumentException($"Hostname contains invailed character: <");
+                if (value.Contains(">")) throw new ArgumentException($"Hostname contains invailed character: >");
+                if (value.Contains("|")) throw new ArgumentException($"Hostname contains invailed character: |");
+                _hostname = value;
+            }
+            else throw new ArgumentNullException("Hostname cannot be null");
+            
         }
     }
 
@@ -20,8 +36,10 @@ public class Host
         get => _macAddress;
         set
         {
-            // do validation here on "value"
-            _macAddress = value;
+            Regex r = new Regex("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})|([0-9a-fA-F]{4}\\.[0-9a-fA-F]{4}\\.[0-9a-fA-F]{4})$");
+            if (r.IsMatch(value)) _macAddress = value;
+            else throw new ArgumentException($"{value} is not a vaild mac address");
+
         }
     }
 
@@ -52,9 +70,9 @@ public class Host
         MacAddress = macAddress;
     }
 
-    public void AddPort(int portNumber, string? portName = null)
+    public void AddPort(int portNumber, PortStatus portStatus, string? portName = null)
     {
-        Port port = new(portNumber, portName);
+        Port port = new(portNumber, portStatus, portName);
         Ports.Add(port);
     }
 

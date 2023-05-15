@@ -1,9 +1,18 @@
 ﻿namespace NetInspectLib.Types
 {
+    public enum PortStatus
+    {
+        Open,
+        Filtered,
+        Closed
+    }
+
     public class Port
     {
         public int Number { get; }
         public string Name { get; }
+
+        public PortStatus Status { get; }
 
         private static readonly Dictionary<int, string> knownPorts = new Dictionary<int, string>()
         {
@@ -21,7 +30,7 @@
           
         };
 
-        public Port(int number, string? name = null)
+        public Port(int number, PortStatus status, string? name = null)
         {
             Number = number;
             if (name == null && knownPorts.ContainsKey(number))
@@ -32,6 +41,7 @@
             {
                 Name = name ?? "UNKNOWN";
             }
+            Status = status;
         }
     }
 }
