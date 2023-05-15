@@ -84,7 +84,7 @@ namespace NetInspectLib.Scanning
                     udpClient.Close();
                     return new Port(portNum, PortStatus.Open);
                 }
-                catch (SocketException e)
+                catch (SocketException)
                 {
                     udpClient.Close();
                     return null;

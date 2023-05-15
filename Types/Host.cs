@@ -1,6 +1,5 @@
 ﻿using NetInspectLib.Types;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 
 public class Host
@@ -36,15 +35,19 @@ public class Host
         get => _macAddress;
         set
         {
-            Regex r = new Regex("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})|([0-9a-fA-F]{4}\\.[0-9a-fA-F]{4}\\.[0-9a-fA-F]{4})$");
-            if (r.IsMatch(value)) _macAddress = value;
-            else throw new ArgumentException($"{value} is not a vaild mac address");
+            if (value != null)
+            {
+                Regex r = new Regex("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})|([0-9a-fA-F]{4}\\.[0-9a-fA-F]{4}\\.[0-9a-fA-F]{4})$");
+                if (r.IsMatch(value)) _macAddress = value;
+                else throw new ArgumentException($"{value} is not a vaild mac address");
+            }
+            else throw new ArgumentNullException("Mac Address cannot be null");
 
         }
     }
 
-    private IPAddress _ipAddress;
-    public IPAddress IPAddress
+    private IPAddress? _ipAddress;
+    public IPAddress? IPAddress
     {
         get => _ipAddress;
         set
