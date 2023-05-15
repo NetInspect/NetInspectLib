@@ -59,6 +59,7 @@ namespace NetInspectLib.Scanning
                     host.AddPort(openPort);
                 }
             }
+
             return host;
         }
 
@@ -66,8 +67,8 @@ namespace NetInspectLib.Scanning
         {
             using (var tcpClient = new TcpClient())
             {
-                tcpClient.ReceiveTimeout = 500;
-                tcpClient.SendTimeout = 500;
+                tcpClient.ReceiveTimeout = 100;
+                tcpClient.SendTimeout = 100;
                 try
                 {
                     tcpClient.Connect(host.IPAddress, portNum);
