@@ -4,13 +4,12 @@ using System.Text.RegularExpressions;
 
 public class Host
 {
-    private string? _hostname;
-    public string? Hostname
+    private string _hostname = string.Empty;
+    public string Hostname
     {
         get => _hostname;
         set
         {
-            // do validation here on "value"
             if (value != null)
             {
                 if (value.Contains("\\")) throw new ArgumentException($"Hostname contains invailed character: \\");
@@ -29,8 +28,8 @@ public class Host
         }
     }
 
-    private string? _macAddress;
-    public string? MacAddress
+    private string _macAddress = string.Empty;
+    public string MacAddress
     {
         get => _macAddress;
         set
@@ -46,14 +45,17 @@ public class Host
         }
     }
 
-    private IPAddress? _ipAddress;
-    public IPAddress? IPAddress
+    private IPAddress _ipAddress = IPAddress.None;
+    public IPAddress IPAddress
     {
         get => _ipAddress;
         set
         {
-            // do validation here on "value"
-            _ipAddress = value;
+            if (value != null)
+            {
+                _ipAddress = value;
+            }
+            else throw new ArgumentNullException("IP Address cannot be null");
         }
     }
 
@@ -61,16 +63,16 @@ public class Host
 
     public Host(string ipAddress, string? hostname = null, string? macAddress = null)
     {
-        Hostname = hostname;
         IPAddress = IPAddress.Parse(ipAddress);
-        MacAddress = macAddress;
+        Hostname = hostname ?? string.Empty;
+        MacAddress = macAddress ?? string.Empty;
     }
 
     public Host(IPAddress ipAddress, string? hostname = null, string? macAddress = null)
     {
-        Hostname = hostname;
         IPAddress = ipAddress;
-        MacAddress = macAddress;
+        Hostname = hostname ?? string.Empty;
+        MacAddress = macAddress ?? string.Empty;
     }
 
     public void AddPort(int portNumber, PortStatus portStatus, string? portName = null)
