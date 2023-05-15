@@ -63,14 +63,16 @@ namespace NetInspectLib.Scanning
         {
             ConcurrentBag<Port> openPorts = new ConcurrentBag<Port>();
 
-            // Use Parallel.ForEach to parallelize the scanning of multiple ports
-            Parallel.ForEach(ports, async portNum =>
+            await Task.Run(() =>
             {
-                Port? port = await ScanPort(host, portNum);
-                if (port != null)
+                Parallel.ForEach(ports, async portNum =>
                 {
-                    openPorts.Add(port);
-                }
+                    Port? port = await ScanPort(host, portNum);
+                    if (port != null)
+                    {
+                        openPorts.Add(port);
+                    }
+                });
             });
 
             foreach (var openPort in openPorts.OrderBy(x => x.Number))
@@ -83,6 +85,7 @@ namespace NetInspectLib.Scanning
 
             return host;
         }
+
 
 
         private async Task<Port?> ScanPort(Host host, int portNum)
