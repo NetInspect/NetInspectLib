@@ -1,44 +1,22 @@
 ﻿using System.Collections.Concurrent;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using NetInspectLib.Discovery;
-using NetInspectLib.Types;
 using NetInspectLib.Networking.Utilities;
+using NetInspectLib.Types;
 
 namespace NetInspectLib.Scanning
 {
-    /// <summary>
-    /// Class for scanning Ports
-    /// <example>
-    /// Usage
-    /// <code>
-    ///     PortScan portscanner = new PortScan();
-    ///     Task<bool> scan = portscanner.DoPortScan("192.168.1.0/24", "1-1000");
-    ///     bool success = await portscanner;
-    ///     if(success)
-    ///     {
-    ///         foreach(host in portscanner.results)
-    ///         {
-    ///             //Do Something
-    ///         }
-    ///     }
-    /// </code>
-    /// </example>
-    /// </summary>
     public class PortScan
     {
-        public List<Host> results { get; }
+        public List<Host> Results { get; }
+
+        private int maxConcurrentTasks = Environment.ProcessorCount * 2;
 
         public PortScan()
         {
-            results = new List<Host>();
+            Results = new List<Host>();
         }
-
-        /// <summary>
-        /// Scans a range or single IP address + a single or range of ports specified for the status of the ports.
-        /// </summary>
-        /// <param name="networkMask">The network mask to scan in CIDR notation (e.g. "192.168.0.0/24" or ). If no mask is provided the ICMPScan.cs added a /32 to scan a single IP. </param>
-        /// <param name="portRange">The range of ports to scan (e.g 1-100 or 80, 433, 22). If not provided default is 1-1024. </param>
-        /// <returns>A boolean value of True if the scan completed successfully, otherwise false</returns>
 
         public async Task<bool> DoPortScan(string networkMask, string portRange)
         {
@@ -48,32 +26,44 @@ namespace NetInspectLib.Scanning
             bool success = await hostScan.DoScan();
             if (success)
             {
-                List<Task<Host>> hostTasks = new List<Task<Host>>();
+                var hostTasks = new List<Task<Host>>();
                 foreach (Host host in hostScan.results)
                 {
                     hostTasks.Add(ScanHost(host, ports));
                 }
                 var hosts = await Task.WhenAll(hostTasks);
-                results.AddRange(hosts);
+                Results.AddRange(hosts);
             }
             return true;
         }
 
         private async Task<Host> ScanHost(Host host, IEnumerable<int> ports)
         {
-            ConcurrentBag<Port> openPorts = new ConcurrentBag<Port>();
+            var openPorts = new ConcurrentBag<Port>();
+            var portTasks = new List<Task>();
+            var throttler = new SemaphoreSlim(maxConcurrentTasks);
 
-            await Task.Run(() =>
+            foreach (int portNum in ports)
             {
-                Parallel.ForEach(ports, async portNum =>
+                await throttler.WaitAsync();
+                portTasks.Add(Task.Run(async () =>
                 {
-                    Port? port = await ScanPort(host, portNum);
-                    if (port != null)
+                    try
                     {
-                        openPorts.Add(port);
+                        Port? port = await ScanPort(host, portNum);
+                        if (port != null)
+                        {
+                            openPorts.Add(port);
+                        }
                     }
-                });
-            });
+                    finally
+                    {
+                        throttler.Release();
+                    }
+                }));
+            }
+
+            await Task.WhenAll(portTasks);
 
             foreach (var openPort in openPorts.OrderBy(x => x.Number))
             {
@@ -82,7 +72,6 @@ namespace NetInspectLib.Scanning
                     host.AddPort(openPort);
                 }
             }
-
             return host;
         }
 

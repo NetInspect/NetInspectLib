@@ -1,101 +1,135 @@
 using System;
 using System.Collections.Generic;
-using System.Net;
-using DnsClient;
-using DnsClient.Protocol;
-
+using System.Net.Http;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
 namespace NetInspectLib.Networking
 {
-
     /// <summary>
     /// Provides methods to perform DNS lookups and retrieve DNS records.
-    /// /// <example>
-    /// Usage
-    /// <code>
-    ///     DnsLookup dnsLookup = new DnsLookup();
-    ///     List<DnsRecord> results = dnsLookup.DoDNSLookup("google.com", QueryType.ANY);
-    ///     foreach(DnsRecord result in results)
-    ///     {
-    ///             //Do Something
-    ///     }
-    /// </code>
-    /// </example>
     /// </summary>
     public class DnsLookup
     {
-        private readonly LookupClient _dnsClient;
-
         /// <summary>
-        /// Initializes a new instance of the DnsLookup class with the specified DNS server.
-        /// If no DNS server is specified, a default one is used.
+        /// Looksup a domain or host name for DNS information.
         /// </summary>
-        /// <param name="dnsServer">The IP address of the DNS server to use.</param>
-        public DnsLookup(string? dnsServer = null)
+        /// <param name="domainOrIp">The domain name or host IP for a reverse lookup (e.g., "Google.com").</param>
+        /// <param name="queryType">The DNS record to query (e.g., "A" for A records). If left empty or null, the default is a "ANY" query. Note that some DNS servers don't accept "ANY" queries.</param>
+        /// <returns>A list of DNS records.</returns>
+        public async Task<List<DnsRecord>> DoDNSLookup(string domainOrIp, string queryType)
         {
-            if (string.IsNullOrEmpty(dnsServer))
-            {
-                _dnsClient = new LookupClient();
-            }
-            else
-            {
-                _dnsClient = new LookupClient(IPAddress.Parse(dnsServer));
-            }
-        }
+            HttpClient client = new HttpClient();
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"https://cloudflare-dns.com/dns-query?name={domainOrIp}&type={queryType}&do=true");
+            request.Headers.Add("Accept", "application/dns-json");
 
-        /// <summary>
-        /// Looksup a domain or host name for DNS information with a given DNS server.
-        /// </summary>
-        /// <param name="domain_or_ip">The domain name or host IP for a reverse lookup (e.g "Google.com").</param>
-        /// <param name="queryType">The DNS record to query (e.g "A" for A records) if left empty or null the default is a "ANY" query. Note some DNS servers don't except "ANY" queries.</param>
-        /// <returns>A list of DNS records</returns>
-        public List<DnsRecord> DoDNSLookup(string domain_or_ip, QueryType queryType = QueryType.ANY)
-        {
-            List<DnsRecord> results = new List<DnsRecord>();
-            try
-            {
-                IDnsQueryResponse response = _dnsClient.Query(domain_or_ip, queryType);
-                string queryTypeString = response.Questions[0].QuestionType.ToString();
+            HttpResponseMessage response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
 
-                foreach (DnsResourceRecord record in response.Answers)
+            string json = await response.Content.ReadAsStringAsync();
+            DnsResponse dnsResponse = JsonSerializer.Deserialize<DnsResponse>(json);
+
+            List<DnsRecord> dnsRecords = new List<DnsRecord>();
+
+            if (dnsResponse?.Answer != null)
+            {
+                foreach (var answer in dnsResponse.Answer)
                 {
-                    string[] parts = record.ToString().Split(' ');
-                    string data = parts[parts.Length - 1];
-                    DnsRecord dnsRecord = new DnsRecord
+                    dnsRecords.Add(new DnsRecord
                     {
-                        DomainName = record.DomainName,
-                        RecordClass = record.RecordClass.ToString(),
-                        RecordType = record.RecordType.ToString(),
-                        TimeToLive = record.TimeToLive.ToString(),
-                        Data = data
-                    };
-                    results.Add(dnsRecord);
+                        Name = answer.Name,
+                        Type = answer.Type,
+                        TTL = answer.Ttl,
+                        Data = answer.Data
+                    });
                 }
             }
-            catch (DnsResponseException ex)
-            {
-                DnsRecord dnsRecord = new DnsRecord
-                {
-                    DomainName = domain_or_ip,
-                    RecordClass = "Query failed",
-                    RecordType = ex.Message,
-                    TimeToLive = TimeSpan.Zero.ToString(),
-                    Data = ""
-                };
-                results.Add(dnsRecord);
-            }
-            return results;
+
+            return dnsRecords;
         }
-        
+
+        private class DnsResponse
+        {
+            [JsonPropertyName("Status")]
+            public int Status { get; init; }
+
+            [JsonPropertyName("TC")]
+            public bool Truncated { get; init; }
+
+            [JsonPropertyName("RD")]
+            public bool RecursiveDesired { get; init; }
+
+            [JsonPropertyName("RA")]
+            public bool RecursionAvailable { get; init; }
+
+            [JsonPropertyName("AD")]
+            public bool DnssecVerified { get; init; }
+
+            [JsonPropertyName("CD")]
+            public bool DnsSecDisabled { get; init; }
+
+            [JsonPropertyName("Question")]
+            public List<DnsQuestion> Question { get; init; }
+
+            [JsonPropertyName("Answer")]
+            public List<DnsAnswer>? Answer { get; init; }
+
+            [JsonPropertyName("Authority")]
+            public List<DnsAnswer>? Authority { get; init; }
+
+            [JsonPropertyName("Additional")]
+            public List<DnsAnswer>? Additional { get; init; }
+
+            public class DnsQuestion
+            {
+                [JsonPropertyName("name")]
+                public string Name { get; init; }
+
+                [JsonPropertyName("type")]
+                public int Type { get; init; }
+            }
+
+            public class DnsAnswer
+            {
+                [JsonPropertyName("name")]
+                public string Name { get; init; }
+
+                [JsonPropertyName("type")]
+                public int Type { get; init; }
+
+                [JsonPropertyName("TTL")]
+                public int Ttl { get; init; }
+
+                [JsonPropertyName("data")]
+                public string Data { get; init; }
+            }
+        }
+
+        /// <summary>
+        /// Represents a DNS record.
+        /// </summary>
         public class DnsRecord
         {
-            public string? DomainName { get; set; }
-            public string? RecordClass { get; set; }
-            public string? RecordType { get; set; }
-            public string? TimeToLive { get; set; }
-            public string? Data { get; set; }
+            /// <summary>
+            /// Gets or sets the name of the record.
+            /// </summary>
+            public string Name { get; set; }
+
+            /// <summary>
+            /// Gets or sets the type of the record.
+            /// </summary>
+            public int Type { get; set; }
+
+            /// <summary>
+            /// Gets or sets the time-to-live (TTL) value of the record.
+            /// </summary>
+            public int TTL { get; set; }
+
+            /// <summary>
+            /// Gets or sets the data associated with the record.
+            /// </summary>
+            public string Data { get; set; }
         }
-
     }
-
 }
