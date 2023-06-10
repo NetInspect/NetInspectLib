@@ -20,8 +20,9 @@ namespace NetInspectLib.Networking
         /// <returns>A list of DNS records.</returns>
         public async Task<List<DnsRecord>> DoDNSLookup(string domainOrIp, string queryType)
         {
+
             HttpClient client = new HttpClient();
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"https://cloudflare-dns.com/dns-query?name={domainOrIp}&type={queryType}&do=true");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"https://dns.google/resolve?name={domainOrIp}&type={queryType}&do=true");
             request.Headers.Add("Accept", "application/dns-json");
 
             HttpResponseMessage response = await client.SendAsync(request);
@@ -39,15 +40,47 @@ namespace NetInspectLib.Networking
                     dnsRecords.Add(new DnsRecord
                     {
                         Name = answer.Name,
-                        Type = answer.Type,
+                        Type = GetRecordTypeName(answer.Type),
                         TTL = answer.Ttl,
-                        Data = answer.Data
+                        Data = answer.Data,
                     });
                 }
             }
 
             return dnsRecords;
         }
+
+        private string GetRecordTypeName(int type)
+        {
+            switch (type)
+            {
+                case 1:
+                    return "A";
+                case 2:
+                    return "NS";
+                case 5:
+                    return "CNAME";
+                case 6:
+                    return "SOA";
+                case 12:
+                    return "PTR";
+                case 15:
+                    return "MX";
+                case 16:
+                    return "TXT";
+                case 28:
+                    return "AAAA";
+                case 41:
+                    return "OPT";
+                case 257:
+                    return "CAA";
+                case 255:
+                    return "ANY";
+                default:
+                    return "Unknown";
+            }
+        }
+
 
         private class DnsResponse
         {
@@ -66,20 +99,17 @@ namespace NetInspectLib.Networking
             [JsonPropertyName("AD")]
             public bool DnssecVerified { get; init; }
 
-            [JsonPropertyName("CD")]
-            public bool DnsSecDisabled { get; init; }
-
             [JsonPropertyName("Question")]
             public List<DnsQuestion> Question { get; init; }
 
             [JsonPropertyName("Answer")]
-            public List<DnsAnswer>? Answer { get; init; }
+            public List<DnsAnswer> Answer { get; init; }
 
             [JsonPropertyName("Authority")]
-            public List<DnsAnswer>? Authority { get; init; }
+            public List<DnsAnswer> Authority { get; init; }
 
             [JsonPropertyName("Additional")]
-            public List<DnsAnswer>? Additional { get; init; }
+            public List<DnsAnswer> Additional { get; init; }
 
             public class DnsQuestion
             {
@@ -106,6 +136,8 @@ namespace NetInspectLib.Networking
             }
         }
 
+       
+
         /// <summary>
         /// Represents a DNS record.
         /// </summary>
@@ -119,7 +151,7 @@ namespace NetInspectLib.Networking
             /// <summary>
             /// Gets or sets the type of the record.
             /// </summary>
-            public int Type { get; set; }
+            public string Type { get; set; }
 
             /// <summary>
             /// Gets or sets the time-to-live (TTL) value of the record.
@@ -130,6 +162,8 @@ namespace NetInspectLib.Networking
             /// Gets or sets the data associated with the record.
             /// </summary>
             public string Data { get; set; }
+
         }
+
     }
 }
