@@ -15,14 +15,14 @@ namespace NetInspectLib.Networking
         /// <summary>
         /// Looksup a domain or host name for DNS information.
         /// </summary>
-        /// <param name="domainOrIp">The domain name or host IP for a reverse lookup (e.g., "Google.com").</param>
-        /// <param name="queryType">The DNS record to query (e.g., "A" for A records). If left empty or null, the default is a "ANY" query. Note that some DNS servers don't accept "ANY" queries.</param>
+        /// <param name="domainName">The domain name or host IP for a reverse lookup (e.g., "Google.com").</param>
+        /// <param name="queryType">The DNS record to query (e.g., "A" for A records). Note that some DNS servers don't accept "ANY" queries, as why Google was choosen over Cloudflare</param>
         /// <returns>A list of DNS records.</returns>
-        public async Task<List<DnsRecord>> DoDNSLookup(string domainOrIp, string queryType)
+        public async Task<List<DnsRecord>> DoDNSLookup(string domainName, string queryType)
         {
 
             HttpClient client = new HttpClient();
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"https://dns.google/resolve?name={domainOrIp}&type={queryType}&do=true");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"https://dns.google/resolve?name={domainName}&type={queryType}&do=true");
             request.Headers.Add("Accept", "application/dns-json");
 
             HttpResponseMessage response = await client.SendAsync(request);
@@ -39,10 +39,10 @@ namespace NetInspectLib.Networking
                 {
                     dnsRecords.Add(new DnsRecord
                     {
-                        Name = answer.Name,
-                        Type = GetRecordTypeName(answer.Type),
-                        TTL = answer.Ttl,
-                        Data = answer.Data,
+                        Name = answer.A_Name,
+                        RecordType = ConvertRecordType(answer.A_Type),
+                        TTL = answer.A_Ttl,
+                        Data = answer.A_Data,
                     });
                 }
             }
@@ -50,7 +50,7 @@ namespace NetInspectLib.Networking
             return dnsRecords;
         }
 
-        private string GetRecordTypeName(int type)
+        private string ConvertRecordType(int type)
         {
             switch (type)
             {
@@ -80,7 +80,6 @@ namespace NetInspectLib.Networking
                     return "Unknown";
             }
         }
-
 
         private class DnsResponse
         {
@@ -114,53 +113,38 @@ namespace NetInspectLib.Networking
             public class DnsQuestion
             {
                 [JsonPropertyName("name")]
-                public string Name { get; init; }
+                public string Q_Name { get; init; }
 
                 [JsonPropertyName("type")]
-                public int Type { get; init; }
+                public int Q_Type { get; init; }
             }
 
             public class DnsAnswer
             {
                 [JsonPropertyName("name")]
-                public string Name { get; init; }
+                public string A_Name { get; init; }
 
                 [JsonPropertyName("type")]
-                public int Type { get; init; }
+                public int A_Type { get; init; }
 
                 [JsonPropertyName("TTL")]
-                public int Ttl { get; init; }
+                public int A_Ttl { get; init; }
 
                 [JsonPropertyName("data")]
-                public string Data { get; init; }
+                public string A_Data { get; init; }
             }
         }
 
        
-
-        /// <summary>
-        /// Represents a DNS record.
-        /// </summary>
         public class DnsRecord
         {
-            /// <summary>
-            /// Gets or sets the name of the record.
-            /// </summary>
+
             public string Name { get; set; }
+  
+            public string RecordType { get; set; }
 
-            /// <summary>
-            /// Gets or sets the type of the record.
-            /// </summary>
-            public string Type { get; set; }
-
-            /// <summary>
-            /// Gets or sets the time-to-live (TTL) value of the record.
-            /// </summary>
             public int TTL { get; set; }
 
-            /// <summary>
-            /// Gets or sets the data associated with the record.
-            /// </summary>
             public string Data { get; set; }
 
         }
