@@ -1,18 +1,21 @@
 ﻿using System.Collections.Concurrent;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using NetInspectLib.Discovery;
-using NetInspectLib.Types;
 using NetInspectLib.Networking.Utilities;
+using NetInspectLib.Types;
 
 namespace NetInspectLib.Scanning
 {
     public class PortScan
     {
-        public List<Host> results { get; }
+        public List<Host> Results { get; }
+
+        private int maxConcurrentTasks = Environment.ProcessorCount * 2;
 
         public PortScan()
         {
-            results = new List<Host>();
+            Results = new List<Host>();
         }
 
         public async Task<bool> DoPortScan(string networkMask, string portRange)
@@ -24,33 +27,45 @@ namespace NetInspectLib.Scanning
             bool success = await scan;
             if (success)
             {
+                var hostTasks = new List<Task<Host>>();
+              
                 foreach (Host host in hostScan.results)
                 {
                     results.Add(ScanHost(host, ports));
                 }
+                var hosts = await Task.WhenAll(hostTasks);
+                Results.AddRange(hosts);
             }
             return true;
         }
 
         private Host ScanHost(Host host, IEnumerable<int> ports)
         {
-            List<Thread> threads = new List<Thread>();
-            ConcurrentBag<Port> openPorts = new ConcurrentBag<Port>();
-            foreach (var portNum in ports)
+            var openPorts = new ConcurrentBag<Port>();
+            var portTasks = new List<Task>();
+            var throttler = new SemaphoreSlim(maxConcurrentTasks);
+
+            foreach (int portNum in ports)
             {
-                Thread thread = new Thread(() =>
+                await throttler.WaitAsync();
+                portTasks.Add(Task.Run(async () =>
                 {
-                    Port? port = ScanPort(host, portNum);
-                    if (port != null)
+                    try
                     {
-                        openPorts.Add(port);
+                        Port? port = await ScanPort(host, portNum);
+                        if (port != null)
+                        {
+                            openPorts.Add(port);
+                        }
                     }
-                });
-                threads.Add(thread);
-                thread.Start();
+                    finally
+                    {
+                        throttler.Release();
+                    }
+                }));
             }
 
-            foreach (Thread thread in threads) { thread.Join(); }
+            await Task.WhenAll(portTasks);
 
             foreach (var openPort in openPorts.OrderBy(x => x.Number))
             {
@@ -59,7 +74,6 @@ namespace NetInspectLib.Scanning
                     host.AddPort(openPort);
                 }
             }
-
             return host;
         }
 
