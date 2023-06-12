@@ -23,13 +23,15 @@ namespace NetInspectLib.Scanning
             var ports = PortUtility.ParsePortRange(portRange);
 
             ICMPScan hostScan = new ICMPScan(networkMask);
-            bool success = await hostScan.DoScan();
+            Task<bool> scan = hostScan.DoScan();
+            bool success = await scan;
             if (success)
             {
                 var hostTasks = new List<Task<Host>>();
+              
                 foreach (Host host in hostScan.results)
                 {
-                    hostTasks.Add(ScanHost(host, ports));
+                    results.Add(ScanHost(host, ports));
                 }
                 var hosts = await Task.WhenAll(hostTasks);
                 Results.AddRange(hosts);
@@ -37,7 +39,7 @@ namespace NetInspectLib.Scanning
             return true;
         }
 
-        private async Task<Host> ScanHost(Host host, IEnumerable<int> ports)
+        private Host ScanHost(Host host, IEnumerable<int> ports)
         {
             var openPorts = new ConcurrentBag<Port>();
             var portTasks = new List<Task>();
@@ -75,7 +77,7 @@ namespace NetInspectLib.Scanning
             return host;
         }
 
-        private async Task<Port?> ScanPort(Host host, int portNum)
+        private Port? ScanPort(Host host, int portNum)
         {
             using (var tcpClient = new TcpClient())
             {
@@ -83,7 +85,7 @@ namespace NetInspectLib.Scanning
                 tcpClient.SendTimeout = 100;
                 try
                 {
-                    await tcpClient.ConnectAsync(host.IPAddress, portNum);
+                    tcpClient.Connect(host.IPAddress, portNum);
                     tcpClient.Close();
                     return new Port(portNum, PortStatus.Open);
                 }
