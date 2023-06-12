@@ -57,7 +57,7 @@ namespace NetInspectLib.Scanning
               
                 foreach (Host host in hostScan.results)
                 {
-                    results.Add(ScanHost(host, ports));
+                    hostTasks.Add(ScanHost(host, ports));
                 }
                 var hosts = await Task.WhenAll(hostTasks);
                 Results.AddRange(hosts);
@@ -65,7 +65,7 @@ namespace NetInspectLib.Scanning
             return true;
         }
 
-        private Host ScanHost(Host host, IEnumerable<int> ports)
+        private async Task<Host> ScanHost(Host host, IEnumerable<int> ports)
         {
             var openPorts = new ConcurrentBag<Port>();
             var portTasks = new List<Task>();
@@ -78,7 +78,7 @@ namespace NetInspectLib.Scanning
                 {
                     try
                     {
-                        Port? port = await ScanPort(host, portNum);
+                        Port? port = ScanPort(host, portNum);
                         if (port != null)
                         {
                             openPorts.Add(port);
